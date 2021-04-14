@@ -18,7 +18,11 @@
   {registered, []},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    public_key,
+    ssl,
+    uri,
+    et
    ]},
   {env,[]},
   {modules, []},
