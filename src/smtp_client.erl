@@ -92,7 +92,7 @@ connect(Options) ->
   Host = maps:get(host, Options, <<"localhost">>),
   Port = maps:get(port, Options, 25),
   Timeout = maps:get(connection_timeout, Options, 5000),
-  RequiredConnectOptions = [{mode, binary}],
+  RequiredConnectOptions = [{mode, binary}, {active, false}, {packet, line}],
   ConnectOptions = RequiredConnectOptions ++ options_connect_options(Options),
   ?LOG_DEBUG("connecting to ~s:~b", [Host, Port]),
   HostAddress = host_address(Host),
