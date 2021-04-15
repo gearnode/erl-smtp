@@ -92,6 +92,8 @@ connect(Options) ->
   Host = maps:get(host, Options, <<"localhost">>),
   Port = maps:get(port, Options, 25),
   Timeout = maps:get(connection_timeout, Options, 5000),
+
+  %% Enable line mode as defined by the RFC 5321 section 2.3.7
   RequiredConnectOptions = [{mode, binary}, {active, false}, {packet, line}],
   ConnectOptions = RequiredConnectOptions ++ options_connect_options(Options),
   ?LOG_DEBUG("connecting to ~s:~b", [Host, Port]),
