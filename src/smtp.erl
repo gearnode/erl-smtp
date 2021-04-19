@@ -14,4 +14,20 @@
 
 -module(smtp).
 
--export([]).
+-export([default_port/0, default_port/1]).
+
+-export_type([protocol/0]).
+
+-type protocol() :: smtp | submission | smtps.
+
+-spec default_port() -> inet:port_number().
+default_port() ->
+  default_port(smtp).
+
+-spec default_port(protocol()) -> inet:port_number().
+default_port(smtp) ->
+  25;
+default_port(submission) ->
+  587;
+default_port(smtps) ->
+  465.
