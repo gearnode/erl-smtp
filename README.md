@@ -1,5 +1,8 @@
 # Introduction
-TODO
+This repository contains an Erlang implementation of the client side
+SMTP protocol defined by the [RFC
+5321](https://tools.ietf.org/html/rfc5321), with some additional
+standard extensions.
 
 # Build
 You can build the library with:
