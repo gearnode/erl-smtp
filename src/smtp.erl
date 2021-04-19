@@ -14,7 +14,7 @@
 
 -module(smtp).
 
--export([default_port/0, default_port/1]).
+-export([default_port/0, default_tls_port/0, default_port/1]).
 
 -export_type([protocol/0]).
 
@@ -23,6 +23,10 @@
 -spec default_port() -> inet:port_number().
 default_port() ->
   default_port(smtp).
+
+-spec default_tls_port() -> inet:port_number().
+default_tls_port() ->
+  default_port(smtps).
 
 -spec default_port(protocol()) -> inet:port_number().
 default_port(smtp) ->
