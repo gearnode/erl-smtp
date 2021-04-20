@@ -35,7 +35,9 @@ parse_reply_line(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
       end;
     {error, Reason} ->
       {error, Reason}
-  end.
+  end;
+parse_reply_line(_) ->
+  {error, invalid_line}.
 
 -spec parse_separator(binary()) ->
         {ok, separator()} | {error, term()}.
@@ -55,10 +57,10 @@ parse_code(Value) when byte_size(Value) =:= 3 ->
     N when N > 0, N < 600 ->
       {ok, N};
     _ ->
-      {error, out_of_range}
+      {error, invalid_code}
   catch
     error:_ ->
-      {error, invalid_integer}
+      {error, invalid_code}
   end;
 parse_code(_) ->
   {error, invalid_format}.
