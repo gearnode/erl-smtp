@@ -14,7 +14,10 @@
 
 -module(smtp).
 
--export([default_port/0, default_tls_port/0, default_port/1]).
+-include_lib("kernel/include/inet.hrl").
+
+-export([default_port/0, default_tls_port/0, default_port/1,
+         fqdn/0]).
 
 -export_type([protocol/0]).
 
@@ -35,3 +38,15 @@ default_port(submission) ->
   587;
 default_port(smtps) ->
   465.
+
+-spec fqdn() -> binary().
+fqdn() ->
+  {ok, Hostname} = inet:gethostname(),
+  case inet:gethostbyname(Hostname) of
+    {ok, #hostent{h_name = FQDN}} when is_atom(FQDN) ->
+      atom_to_binary(FQDN);
+    {ok, #hostent{h_name = FQDN}} when is_list(FQDN) ->
+      iolist_to_binary(FQDN);
+    {error, _} ->
+      <<"localhost">>
+  end.
