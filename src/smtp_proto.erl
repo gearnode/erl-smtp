@@ -27,6 +27,9 @@
 
 -spec encode_ehlo(uri:host()) -> command().
 encode_ehlo(DomainName) ->
+  %% Following the RFC 5321 section 4.1.1.1 the "EHLO" keyword may be
+  %% specified in upper, lower, or mixed case, but as old SMTP server only
+  %% understand upper case the keyword EHLO is always send in upper case.
   <<"EHLO", " ", DomainName/binary, "\r\n">>.
 
 -spec encode_helo(uri:host()) -> command().
