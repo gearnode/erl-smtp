@@ -92,13 +92,15 @@ connect(Options) ->
   Transport = maps:get(transport, Options, tcp),
   Host = maps:get(host, Options, <<"localhost">>),
   Port = maps:get(port, Options, 25),
-  Timeout = maps:get(connection_timeout, Options, 5000),
-
   %% Even the RFC 5321 section 2.3.7 specify that a server MUST send packet by
   %% line, some server seems to not repect this. It's why the sock options
   %% {packet, line} is not enable here.
   RequiredConnectOptions = [{mode, binary}, {active, false}],
   ConnectOptions = RequiredConnectOptions ++ options_connect_options(Options),
+  %% Specifications does not recommends any duration for the connection
+  %% timeout, as SMTP timeouts are often long durations I set connect timeout
+  %% to 1 minute.
+  Timeout = maps:get(connection_timeout, Options, 60_000),
   ?LOG_DEBUG("connecting to ~s:~b", [Host, Port]),
   HostAddress = host_address(Host),
   ConnectFun = case Transport of
