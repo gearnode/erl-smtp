@@ -15,6 +15,7 @@
 -module(smtp_proto).
 
 -export([encode_ehlo/1, encode_helo/1, encode_help/0, encode_noop/0,
+         encode_quit/0,
          parse_reply_line/1]).
 
 -export_type([code/0, separator/0, text/0]).
@@ -43,6 +44,10 @@ encode_help() ->
 -spec encode_noop() -> command().
 encode_noop() ->
   <<"NOOP\r\n">>.
+
+-spec encode_quit() -> command().
+encode_quit() ->
+  <<"QUIT\r\n">>.
 
 -spec parse_reply_line(binary()) ->
         {code(), separator(), text()} | {error, term()}.
