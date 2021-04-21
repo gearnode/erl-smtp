@@ -144,11 +144,11 @@ host_address(Host) ->
         {ok, smtp_parser:msg(), smtp_parser:parser()} | {error, term()}
           when Socket :: inet:socket() | ssl:sslsocket().
 recv(Transport, Socket, Timeout, Parser) ->
-  RecvFun = case Transport of
-              tcp -> fun gen_tcp:recv/3;
-              tls -> fun ssl:recv/3
-            end,
-  case RecvFun(Socket, 0, Timeout) of
+  Recv = case Transport of
+           tcp -> fun gen_tcp:recv/3;
+           tls -> fun ssl:recv/3
+         end,
+  case Recv(Socket, 0, Timeout) of
     {ok, Packet} ->
       case smtp_parser:parse(Parser, Packet) of
         {ok, Reply, NewParser} ->
