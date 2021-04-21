@@ -92,15 +92,16 @@ connect(Options) ->
   Transport = maps:get(transport, Options, tcp),
   Host = maps:get(host, Options, <<"localhost">>),
   Port = maps:get(port, Options, 25),
-  %% Even the RFC 5321 section 2.3.7 specify that a server MUST send packet by
-  %% line, some server seems to not repect this. It's why the sock options
-  %% {packet, line} is not enable here.
-  RequiredConnectOptions = [{mode, binary}, {active, false}],
-  ConnectOptions = RequiredConnectOptions ++ options_connect_options(Options),
   %% Specifications does not recommends any duration for the connection
   %% timeout, as SMTP timeouts are often long durations I set connect timeout
   %% to 1 minute.
   Timeout = maps:get(connection_timeout, Options, 60_000),
+  %% The RFC 5321 section 2.3.7 explain that SMTP server command should be
+  %% send via the transmission channel in "lines". But as this behaviour can
+  %% be altered by a proxy or just not respected by some SMTP server, I
+  %% decided to not use the socket option `{packet, line}`.
+  DefaultConnectOptions = [{mode, binary}, {active, false}],
+  ConnectOptions = DefaultConnectOptions ++ options_connect_options(Options),
   ?LOG_DEBUG("connecting to ~s:~b", [Host, Port]),
   HostAddress = host_address(Host),
   ConnectFun = case Transport of
