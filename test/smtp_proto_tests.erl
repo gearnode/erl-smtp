@@ -52,4 +52,6 @@ parse_reply_line_test_() ->
    ?_assertEqual({error, invalid_separator},
                  smtp_proto:parse_reply_line(<<"2000-hello">>)),
    ?_assertEqual({error, invalid_line},
-                 smtp_proto:parse_reply_line(<<>>))].
+                 smtp_proto:parse_reply_line(<<>>)),
+   ?_assertEqual({error, invalid_code},
+                 smtp_proto:parse_reply_line(<<"AAA hello">>))].
