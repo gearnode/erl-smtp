@@ -94,8 +94,10 @@ connect(Options) ->
   Port = maps:get(port, Options, 25),
   Timeout = maps:get(connection_timeout, Options, 5000),
 
-  %% Enable line mode as defined by the RFC 5321 section 2.3.7
-  RequiredConnectOptions = [{mode, binary}, {active, false}, {packet, line}],
+  %% Even the RFC 5321 section 2.3.7 specify that a server MUST send packet by
+  %% line, some server seems to not repect this. It's why the sock options
+  %% {packet, line} is not enable here.
+  RequiredConnectOptions = [{mode, binary}, {active, false}],
   ConnectOptions = RequiredConnectOptions ++ options_connect_options(Options),
   ?LOG_DEBUG("connecting to ~s:~b", [Host, Port]),
   HostAddress = host_address(Host),
