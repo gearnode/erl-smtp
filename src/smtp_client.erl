@@ -140,6 +140,30 @@ host_address(Host) ->
       HostString
   end.
 
+-spec recv(transport(), Socket, timeout(), smtp_parser:parser()) ->
+        {ok, smtp_parser:msg(), smtp_parser:parser()} | {error, term()}
+          when Socket :: inet:socket() | ssl:sslsocket().
+recv(Transport, Socket, Timeout, Parser) ->
+  RecvFun = case Transport of
+              tcp -> fun gen_tcp:recv/3;
+              tls -> fun ssl:recv/3
+            end,
+  case RecvFun(Socket, 0, Timeout) of
+    {ok, Packet} ->
+      case smtp_parser:parse(Parser, Packet) of
+        {ok, Reply, NewParser} ->
+          {ok, Reply, NewParser};
+        {more, NewParser} ->
+          recv(Transport, Socket, Timeout, NewParser);
+        {error, Reason} ->
+          ?LOG_ERROR("parse smtp reply failed: ~p", [Reason]),
+          {error, Reason}
+        end;
+    {error, Reason} ->
+      ?LOG_ERROR("receive packet failed: ~p", [Reason]),
+      {error, Reason}
+    end.
+
 -spec log_domain() -> [atom()].
 log_domain() ->
   [smtp, client].
