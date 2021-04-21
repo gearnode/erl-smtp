@@ -39,7 +39,7 @@ default_port(submission) ->
 default_port(smtps) ->
   465.
 
--spec fqdn() -> binary().
+-spec fqdn() -> uri:host().
 fqdn() ->
   {ok, Hostname} = inet:gethostname(),
   case inet:gethostbyname(Hostname) of
