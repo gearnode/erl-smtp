@@ -54,11 +54,11 @@ init([Options]) ->
 
 -spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
 terminate(_Reason, #{transport := tcp, socket := Socket}) ->
-  ?LOG_DEBUG("closing connection"),
+  ?LOG_INFO("closing connection"),
   gen_tcp:close(Socket),
   ok;
 terminate(_Reason, #{transport := tls, socket := Socket}) ->
-  ?LOG_DEBUG("closing connection"),
+  ?LOG_INFO("closing connection"),
   ssl:close(Socket),
   ok.
 
