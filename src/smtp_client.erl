@@ -19,7 +19,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, init/1, terminate/2,
-         handle_call/3, handle_cast/2, handle_info/2]).
+         handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0]).
 
@@ -61,6 +61,10 @@ terminate(_Reason, #{transport := tls, socket := Socket}) ->
   ?LOG_DEBUG("closing connection"),
   ssl:close(Socket),
   ok.
+
+handle_continue(Msg, State) ->
+  ?LOG_WARNING("unhandled call ~p", [Msg]),
+  {noreply, State}.
 
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
