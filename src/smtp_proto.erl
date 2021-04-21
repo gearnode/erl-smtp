@@ -14,7 +14,7 @@
 
 -module(smtp_proto).
 
--export([encode_ehlo/1,
+-export([encode_ehlo/1, encode_helo/1,
          parse_reply_line/1]).
 
 -export_type([code/0, separator/0, text/0]).
@@ -28,6 +28,10 @@
 -spec encode_ehlo(uri:host()) -> command().
 encode_ehlo(DomainName) ->
   <<"EHLO", " ", DomainName/binary, "\r\n">>.
+
+-spec encode_helo(uri:host()) -> command().
+encode_helo(DomainName) ->
+  <<"HELO", " ", DomainName/binary, "\r\n">>.
 
 -spec parse_reply_line(binary()) ->
         {code(), separator(), text()} | {error, term()}.
