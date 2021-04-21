@@ -75,7 +75,7 @@ handle_cast(Msg, State) ->
 -spec handle_info(term(), state()) -> et_gen_server:handle_info_ret(state()).
 handle_info({Event, _}, _State) when Event =:= tcp_closed;
                                      Event =:= ssl_closed ->
-  ?LOG_DEBUG("connection closed"),
+  ?LOG_INFO("connection closed"),
   exit(normal);
 
 handle_info(Msg, State) ->
