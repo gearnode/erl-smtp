@@ -140,6 +140,22 @@ host_address(Host) ->
       HostString
   end.
 
+-spec send(transport(), Socket, binary()) ->
+        ok | {error, term()}
+          when Socket :: inet:socket() | ssl:sslsocket().
+send(Transport, Socket, Packet) ->
+  Send = case Transport of
+           tcp -> fun gen_tcp:send/2;
+           tls -> fun ssl:send/2
+         end,
+  case Send(Socket, Packet) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      ?LOG_ERROR("write packet failed: ~p", [Reason]),
+      {error, Reason}
+  end.
+
 -spec recv(transport(), Socket, timeout(), smtp_parser:parser()) ->
         {ok, smtp_parser:msg(), smtp_parser:parser()} | {error, term()}
           when Socket :: inet:socket() | ssl:sslsocket().
