@@ -50,12 +50,7 @@ start_link(Options) ->
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   logger:update_process_metadata(#{domain => log_domain()}),
-  case connect(Options) of
-    {ok, State} ->
-      {ok, State};
-    {error, Reason} ->
-      {stop, Reason}
-  end.
+  connect(Options).
 
 -spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
 terminate(_Reason, #{transport := tcp, socket := Socket}) ->
@@ -87,7 +82,7 @@ handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
 
--spec connect(options()) -> {ok, state()} | {error, term()}.
+-spec connect(options()) -> et_gen_server:init_ret(state()).
 connect(Options) ->
   Transport = maps:get(transport, Options, tcp),
   Host = maps:get(host, Options, <<"localhost">>),
@@ -112,12 +107,12 @@ connect(Options) ->
     {ok, Socket} ->
       State = #{options => Options,
                 transport => Transport,
-                parser => smtp_parser:new(reply),
-                socket => Socket},
-      {ok, State};
+                socket => Socket,
+                parser => smtp_parser:new(reply)},
+      {ok, State, {continue, ehlo}};
     {error, Reason} ->
       ?LOG_ERROR("connection failed: ~p", [Reason]),
-      {error, Reason}
+      {stop, normal}
   end.
 
 -spec options_connect_options(options()) -> [Options] when
