@@ -113,13 +113,3 @@ parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
     {error, Reason} ->
       throw({error, Reason})
   end.
-
-%% 220 hello\r\n
-
-%% 220-coucou\r\n
-%% 220 hello world
-
-%% 220 text<CRLF>
-%% 220-text<CRLF>
-
-%% 220-mail.test.com ESMTP Postfix\r\n220-\r\n220-System Info:  This is a Postfix mail server\r\n220-.             running a multiline SMTP greeting patch\r\n220-\r\n220-Further Info: See http://www.postfix.org\r\n220-\r\n220-Site Contact: John Smith, Postmaster\r\n220-Email:        <postmaster@test.com>\r\n220-Telephone:    +1-123-456-7890\r\n220-\r\n220 Please don't send me SPAM here - we don't like it\r\n220 hello world
