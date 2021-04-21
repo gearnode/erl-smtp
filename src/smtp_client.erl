@@ -37,6 +37,7 @@
 
 -type state() :: #{options := options(),
                    transport := transport(),
+                   parser := smtp_parser:parser(),
                    socket := inet:socket() | ssl:sslsocket()}.
 
 -type transport() :: tcp | tls.
@@ -106,6 +107,7 @@ connect(Options) ->
     {ok, Socket} ->
       State = #{options => Options,
                 transport => Transport,
+                parser => smtp_parser:new(reply),
                 socket => Socket},
       {ok, State};
     {error, Reason} ->
