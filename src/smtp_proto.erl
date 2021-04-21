@@ -77,7 +77,7 @@ parse_separator(_) ->
 
 -spec parse_code(binary()) ->
         {ok, pos_integer()} | {error, term()}.
-parse_code(Value) when byte_size(Value) =:= 3 ->
+parse_code(Value) ->
   try
     binary_to_integer(Value)
   of
@@ -88,6 +88,4 @@ parse_code(Value) when byte_size(Value) =:= 3 ->
   catch
     error:_ ->
       {error, invalid_code}
-  end;
-parse_code(_) ->
-  {error, invalid_format}.
+  end.
