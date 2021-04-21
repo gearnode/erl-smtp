@@ -16,6 +16,30 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+encode_ehlo_test_() ->
+  [?_assertEqual(<<"EHLO mail.example.com\r\n">>,
+                 smtp_proto:encode_ehlo(<<"mail.example.com">>)),
+   ?_assertEqual(<<"EHLO localhost\r\n">>,
+                 smtp_proto:encode_ehlo(<<"localhost">>))].
+
+encode_helo_test_() ->
+  [?_assertEqual(<<"HELO mail.example.com\r\n">>,
+                 smtp_proto:encode_helo(<<"mail.example.com">>)),
+   ?_assertEqual(<<"HELO localhost\r\n">>,
+                 smtp_proto:encode_helo(<<"localhost">>))].
+
+encode_help_test_() ->
+  [?_assertEqual(<<"HELP\r\n">>,
+                 smtp_proto:encode_help())].
+
+encode_noop_test_() ->
+  [?_assertEqual(<<"NOOP\r\n">>,
+                 smtp_proto:encode_noop())].
+
+encode_quit_test_() ->
+  [?_assertEqual(<<"QUIT\r\n">>,
+                 smtp_proto:encode_quit())].
+
 parse_reply_line_test_() ->
   [?_assertEqual({220, sp, <<"mail.example.com Postfix">>},
                  smtp_proto:parse_reply_line(<<"220 mail.example.com Postfix">>)),
