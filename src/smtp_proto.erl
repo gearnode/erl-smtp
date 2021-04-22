@@ -19,7 +19,7 @@
          encode_expn/1,
          parse_reply/1]).
 
--export_type([code/0, separator/0, text/0]).
+-export_type([code/0, separator/0, text/0, command/0]).
 
 -type code() :: 001..599.
 -type separator() :: minus | sp.
