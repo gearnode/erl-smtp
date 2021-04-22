@@ -49,7 +49,7 @@ start_link(Options) ->
 
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
-  logger:update_process_metadata(#{domain => log_domain()}),
+  logger:update_process_metadata(#{domain => [smtp, client]}),
   connect(Options).
 
 -spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
@@ -183,7 +183,3 @@ recv(Transport, Socket, Timeout, Parser) ->
       ?LOG_ERROR("receive packet failed: ~p", [Reason]),
       {error, Reason}
     end.
-
--spec log_domain() -> [atom()].
-log_domain() ->
-  [smtp, client].
