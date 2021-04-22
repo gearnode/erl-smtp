@@ -163,7 +163,7 @@ greeting_message(#{transport := T, socket := S, parser := P} = State) ->
 
 -spec ehlo(state()) -> et_gen_server:handle_continue_ret(state()).
 ehlo(State) ->
-  Cmd = smtp_proto:encode_ehlo(smtp:fqdn()),
+  Cmd = smtp_proto:encode_ehlo_cmd(smtp:fqdn()),
   case exec(State, Cmd, 250, 300_000) of
     {ok, _, NewParser} ->
       {noreply, State#{parser => NewParser}};
@@ -175,7 +175,7 @@ ehlo(State) ->
 
 -spec helo(state()) -> et_gen_server:handle_continue_ret(state()).
 helo(State) ->
-  Cmd = smtp_proto:encode_helo(smtp:fqdn()),
+  Cmd = smtp_proto:encode_helo_cmd(smtp:fqdn()),
   case exec(State, Cmd, 250, 300_000) of
     {ok, _, NewParser} ->
       {noreply, State#{parser => NewParser}};

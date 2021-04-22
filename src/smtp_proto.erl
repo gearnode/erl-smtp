@@ -14,9 +14,9 @@
 
 -module(smtp_proto).
 
--export([encode_ehlo/1, encode_helo/1, encode_help/0, encode_help/1,
-         encode_noop/0, encode_quit/0, encode_rset/0, encode_vrfy/1,
-         encode_expn/1,
+-export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
+         encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
+         encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
          parse_reply/1]).
 
 -export_type([code/0, separator/0, text/0, command/0]).
@@ -27,40 +27,40 @@
 
 -type command() :: binary().
 
--spec encode_ehlo(uri:host()) -> command().
-encode_ehlo(DomainName) ->
+-spec encode_ehlo_cmd(uri:host()) -> command().
+encode_ehlo_cmd(DomainName) ->
   command(<<"EHLO">>, DomainName).
 
--spec encode_helo(uri:host()) -> command().
-encode_helo(DomainName) ->
+-spec encode_helo_cmd(uri:host()) -> command().
+encode_helo_cmd(DomainName) ->
   command(<<"HELO">>, DomainName).
 
--spec encode_rset() -> command().
-encode_rset() ->
+-spec encode_rset_cmd() -> command().
+encode_rset_cmd() ->
   command(<<"RSET">>).
 
--spec encode_vrfy(binary()) -> command().
-encode_vrfy(Id) ->
+-spec encode_vrfy_cmd(binary()) -> command().
+encode_vrfy_cmd(Id) ->
   command(<<"VRFY">>, Id).
 
--spec encode_expn(binary()) -> command().
-encode_expn(Id) ->
+-spec encode_expn_cmd(binary()) -> command().
+encode_expn_cmd(Id) ->
   command(<<"EXPN">>, Id).
 
--spec encode_help() -> command().
-encode_help() ->
+-spec encode_help_cmd() -> command().
+encode_help_cmd() ->
   command(<<"HELP">>).
 
--spec encode_help(binary()) -> command().
-encode_help(Arg) ->
+-spec encode_help_cmd(binary()) -> command().
+encode_help_cmd(Arg) ->
   command(<<"HELP">>, Arg).
 
--spec encode_noop() -> command().
-encode_noop() ->
+-spec encode_noop_cmd() -> command().
+encode_noop_cmd() ->
   command(<<"NOOP">>).
 
--spec encode_quit() -> command().
-encode_quit() ->
+-spec encode_quit_cmd() -> command().
+encode_quit_cmd() ->
   command(<<"QUIT">>).
 
 -spec command(binary()) -> command().

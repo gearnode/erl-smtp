@@ -18,41 +18,41 @@
 
 encode_ehlo_test_() ->
   [?_assertEqual(<<"EHLO mail.example.com\r\n">>,
-                 smtp_proto:encode_ehlo(<<"mail.example.com">>)),
+                 smtp_proto:encode_ehlo_cmd(<<"mail.example.com">>)),
    ?_assertEqual(<<"EHLO localhost\r\n">>,
-                 smtp_proto:encode_ehlo(<<"localhost">>))].
+                 smtp_proto:encode_ehlo_cmd(<<"localhost">>))].
 
 encode_helo_test_() ->
   [?_assertEqual(<<"HELO mail.example.com\r\n">>,
-                 smtp_proto:encode_helo(<<"mail.example.com">>)),
+                 smtp_proto:encode_helo_cmd(<<"mail.example.com">>)),
    ?_assertEqual(<<"HELO localhost\r\n">>,
-                 smtp_proto:encode_helo(<<"localhost">>))].
+                 smtp_proto:encode_helo_cmd(<<"localhost">>))].
 
 encode_rset_test_() ->
   [?_assertEqual(<<"RSET\r\n">>,
-                 smtp_proto:encode_rset())].
+                 smtp_proto:encode_rset_cmd())].
 
 encode_vrfy_test_() ->
   [?_assertEqual(<<"VRFY contact@example.com\r\n">>,
-                 smtp_proto:encode_vrfy(<<"contact@example.com">>))].
+                 smtp_proto:encode_vrfy_cmd(<<"contact@example.com">>))].
 
 encode_expn_test_() ->
   [?_assertEqual(<<"EXPN ml@example.com\r\n">>,
-                 smtp_proto:encode_expn(<<"ml@example.com">>))].
+                 smtp_proto:encode_expn_cmd(<<"ml@example.com">>))].
 
 encode_help_test_() ->
   [?_assertEqual(<<"HELP\r\n">>,
-                 smtp_proto:encode_help()),
+                 smtp_proto:encode_help_cmd()),
    ?_assertEqual(<<"HELP EXPN\r\n">>,
-                 smtp_proto:encode_help(<<"EXPN">>))].
+                 smtp_proto:encode_help_cmd(<<"EXPN">>))].
 
 encode_noop_test_() ->
   [?_assertEqual(<<"NOOP\r\n">>,
-                 smtp_proto:encode_noop())].
+                 smtp_proto:encode_noop_cmd())].
 
 encode_quit_test_() ->
   [?_assertEqual(<<"QUIT\r\n">>,
-                 smtp_proto:encode_quit())].
+                 smtp_proto:encode_quit_cmd())].
 
 parse_reply_test_() ->
   [?_assertEqual({220, sp, <<"mail.example.com Postfix">>},
