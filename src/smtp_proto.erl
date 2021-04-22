@@ -28,38 +28,43 @@
 
 -spec encode_ehlo(uri:host()) -> command().
 encode_ehlo(DomainName) ->
-  %% Following the RFC 5321 section 4.1.1.1 the "EHLO" keyword may be
-  %% specified in upper, lower, or mixed case, but as old SMTP server only
-  %% understand upper case the keyword EHLO is always send in upper case.
-  <<"EHLO", " ", DomainName/binary, "\r\n">>.
+  command(<<"EHLO">>, DomainName).
 
 -spec encode_helo(uri:host()) -> command().
 encode_helo(DomainName) ->
-  <<"HELO", " ", DomainName/binary, "\r\n">>.
+  command(<<"HELO">>, DomainName).
 
 -spec encode_rset() -> command().
 encode_rset() ->
-  <<"RSET\r\n">>.
+  command(<<"RSET">>).
 
 -spec encode_vrfy(binary()) -> command().
 encode_vrfy(Id) ->
-  <<"VRFY", " ", Id/binary, "\r\n">>.
+  command(<<"VRFY">>, Id).
 
 -spec encode_expn(binary()) -> command().
 encode_expn(Id) ->
-  <<"EXPN", " ", Id/binary, "\r\n">>.
+  command(<<"EXPN">>, Id).
 
 -spec encode_help() -> command().
 encode_help() ->
-  <<"HELP\r\n">>.
+  command(<<"HELP">>).
 
 -spec encode_noop() -> command().
 encode_noop() ->
-  <<"NOOP\r\n">>.
+  command(<<"NOOP">>).
 
 -spec encode_quit() -> command().
 encode_quit() ->
-  <<"QUIT\r\n">>.
+  command(<<"QUIT">>).
+
+-spec command(binary()) -> command().
+command(Keyword) ->
+  <<Keyword/binary, $\r, $\n>>.
+
+-spec command(binary(), binary()) -> command().
+command(Keyword, Arg) ->
+  <<Keyword/binary, " ", Arg/binary, $\r, $\n>>.
 
 -spec parse_reply_line(binary()) ->
         {code(), separator(), text()} | {error, term()}.
