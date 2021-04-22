@@ -36,6 +36,10 @@ encode_vrfy_test_() ->
   [?_assertEqual(<<"VRFY contact@example.com\r\n">>,
                  smtp_proto:encode_vrfy(<<"contact@example.com">>))].
 
+encode_expn_test_() ->
+  [?_assertEqual(<<"EXPN ml@example.com\r\n">>,
+                 smtp_proto:encode_expn(<<"ml@example.com">>))].
+
 encode_help_test_() ->
   [?_assertEqual(<<"HELP\r\n">>,
                  smtp_proto:encode_help())].
