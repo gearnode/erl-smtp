@@ -195,6 +195,5 @@ recv(Transport, Socket, Timeout, Parser) ->
           {error, {parse_error, Reason}}
         end;
     {error, Reason} ->
-      ?LOG_ERROR("receive packet failed: ~p", [Reason]),
-      {error, Reason}
+      {error, {connection_error, Reason}}
     end.
