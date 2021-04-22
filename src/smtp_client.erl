@@ -66,12 +66,14 @@ handle_continue(Msg, State) ->
   ?LOG_WARNING("unhandled call ~p", [Msg]),
   {noreply, State}.
 
+
+-spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
+        et_gen_server:handle_call_ret(state()).
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
 
 -spec handle_cast(term(), state()) -> et_gen_server:handle_cast_ret(state()).
-
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
