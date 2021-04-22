@@ -144,6 +144,23 @@ host_address(Host) ->
       HostString
   end.
 
+-spec exec(state(), smtp_proto:command(), smtp_proto:code(), timeout()) ->
+        smtp_parser:parse_result() | {error, term()}.
+exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
+  case send(T, S, Command) of
+    ok ->
+      case recv(T, S, Timeout, P) of
+        {ok, #{code := Code} = Reply, NewParser} ->
+          {ok, Reply, NewParser};
+        {ok, Reply, NewParser} ->
+          {error, {unexpected_code, Reply, NewParser}};
+        {error, Reason} ->
+          {error, Reason}
+      end;
+    {error, Reason} ->
+      {error, {connection_error, Reason}}
+  end.
+
 -spec send(transport(), Socket, binary()) ->
         ok | {error, term()}
           when Socket :: inet:socket() | ssl:sslsocket().
