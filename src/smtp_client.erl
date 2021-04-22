@@ -177,7 +177,7 @@ send(Transport, Socket, Packet) ->
   end.
 
 -spec recv(transport(), Socket, timeout(), smtp_parser:parser()) ->
-        {ok, smtp_parser:msg(), smtp_parser:parser()} | {error, term()}
+        smtp_parser:parse_result() | {error, term()}
           when Socket :: inet:socket() | ssl:sslsocket().
 recv(Transport, Socket, Timeout, Parser) ->
   Recv = case Transport of
