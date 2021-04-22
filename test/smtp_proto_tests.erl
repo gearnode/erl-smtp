@@ -32,6 +32,10 @@ encode_rset_test_() ->
   [?_assertEqual(<<"RSET\r\n">>,
                  smtp_proto:encode_rset())].
 
+encode_vrfy_test_() ->
+  [?_assertEqual(<<"VRFY contact@example.com\r\n">>,
+                 smtp_proto:encode_vrfy(<<"contact@example.com">>))].
+
 encode_help_test_() ->
   [?_assertEqual(<<"HELP\r\n">>,
                  smtp_proto:encode_help())].
