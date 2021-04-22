@@ -69,7 +69,7 @@ command(Keyword) ->
 
 -spec command(binary(), binary()) -> command().
 command(Keyword, Arg) ->
-  <<Keyword/binary, " ", Arg/binary, $\r, $\n>>.
+  <<Keyword/binary, $\s, Arg/binary, $\r, $\n>>.
 
 -spec parse_reply(binary()) ->
         {code(), separator(), text()} | {error, term()}.
