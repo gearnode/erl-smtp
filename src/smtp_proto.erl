@@ -14,8 +14,9 @@
 
 -module(smtp_proto).
 
--export([encode_ehlo/1, encode_helo/1, encode_help/0, encode_noop/0,
-         encode_quit/0, encode_rset/0, encode_vrfy/1, encode_expn/1,
+-export([encode_ehlo/1, encode_helo/1, encode_help/0, encode_help/1,
+         encode_noop/0, encode_quit/0, encode_rset/0, encode_vrfy/1,
+         encode_expn/1,
          parse_reply_line/1]).
 
 -export_type([code/0, separator/0, text/0]).
@@ -49,6 +50,10 @@ encode_expn(Id) ->
 -spec encode_help() -> command().
 encode_help() ->
   command(<<"HELP">>).
+
+-spec encode_help(binary()) -> command().
+encode_help(Arg) ->
+  command(<<"HELP">>, Arg).
 
 -spec encode_noop() -> command().
 encode_noop() ->

@@ -42,7 +42,9 @@ encode_expn_test_() ->
 
 encode_help_test_() ->
   [?_assertEqual(<<"HELP\r\n">>,
-                 smtp_proto:encode_help())].
+                 smtp_proto:encode_help()),
+   ?_assertEqual(<<"HELP EXPN\r\n">>,
+                 smtp_proto:encode_help(<<"EXPN">>))].
 
 encode_noop_test_() ->
   [?_assertEqual(<<"NOOP\r\n">>,
