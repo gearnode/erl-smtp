@@ -28,6 +28,10 @@ encode_helo_test_() ->
    ?_assertEqual(<<"HELO localhost\r\n">>,
                  smtp_proto:encode_helo(<<"localhost">>))].
 
+encode_rset_test_() ->
+  [?_assertEqual(<<"RSET\r\n">>,
+                 smtp_proto:encode_rset())].
+
 encode_help_test_() ->
   [?_assertEqual(<<"HELP\r\n">>,
                  smtp_proto:encode_help())].
