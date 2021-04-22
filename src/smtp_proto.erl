@@ -17,7 +17,7 @@
 -export([encode_ehlo/1, encode_helo/1, encode_help/0, encode_help/1,
          encode_noop/0, encode_quit/0, encode_rset/0, encode_vrfy/1,
          encode_expn/1,
-         parse_reply_line/1]).
+         parse_reply/1]).
 
 -export_type([code/0, separator/0, text/0]).
 
@@ -71,9 +71,9 @@ command(Keyword) ->
 command(Keyword, Arg) ->
   <<Keyword/binary, " ", Arg/binary, $\r, $\n>>.
 
--spec parse_reply_line(binary()) ->
+-spec parse_reply(binary()) ->
         {code(), separator(), text()} | {error, term()}.
-parse_reply_line(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
+parse_reply(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
   case parse_code(Code0) of
     {ok, Code} ->
       case parse_separator(Separator0) of
@@ -85,7 +85,7 @@ parse_reply_line(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
     {error, Reason} ->
       {error, Reason}
   end;
-parse_reply_line(_) ->
+parse_reply(_) ->
   {error, invalid_line}.
 
 -spec parse_separator(binary()) ->

@@ -80,7 +80,7 @@ parse(Parser = #{state := final, msg := Msg0}) ->
 -spec parse_first_line(parser(), binary(), binary()) ->
         parse_result().
 parse_first_line(Parser, Line, Rest) ->
-  case smtp_proto:parse_reply_line(Line) of
+  case smtp_proto:parse_reply(Line) of
     {Code, Sep, LineText} ->
       Msg = #{code => Code, text => [LineText]},
       Parser2 = Parser#{data => Rest, msg => Msg},
@@ -99,7 +99,7 @@ parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
   Code = maps:get(code, Msg),
   Text = maps:get(text, Msg),
 
-  case smtp_proto:parse_reply_line(Line) of
+  case smtp_proto:parse_reply(Line) of
     {Code, Sep, LineText} ->
       Msg2 = Msg#{text => [LineText | Text]},
       Parser2 = Parser#{data => Rest, msg => Msg2},
