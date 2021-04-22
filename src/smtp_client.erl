@@ -62,6 +62,11 @@ terminate(_Reason, #{transport := tls, socket := Socket}) ->
   ssl:close(Socket),
   ok.
 
+-spec handle_continue(term(), state()) ->
+        et_gen_server:handle_continue_ret(state()).
+handle_continue(ehlo, State) ->
+  greeting_message(State);
+
 handle_continue(Msg, State) ->
   ?LOG_WARNING("unhandled call ~p", [Msg]),
   {noreply, State}.
@@ -143,6 +148,41 @@ host_address(Host) ->
       Address;
     {error, _} ->
       HostString
+  end.
+
+-spec greeting_message(state()) -> et_gen_server:handle_continue_ret(state()).
+greeting_message(#{transport := T, socket := S, parser := P} = State) ->
+  case recv(T, S, 300_000, P) of
+    {ok, #{code := 220}, NewParser} ->
+      ehlo(State#{parser => NewParser});
+    {ok, #{code := Code, text := [Text|_]}, NewParser} ->
+      {stop, {unexpected_code, Code, Text}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end.
+
+-spec ehlo(state()) -> et_gen_server:handle_continue_ret(state()).
+ehlo(State) ->
+  Cmd = smtp_proto:encode_helo(smtp:fqdn()),
+  case exec(State, Cmd, 250, 300_000) of
+    {ok, _, NewParser} ->
+      {noreply, State#{parser => NewParser}};
+    {error, {unexpected_code, _, NewParser}} ->
+      helo(State#{parser => NewParser});
+    {error, Reason} ->
+      {stop, Reason, State}
+  end.
+
+-spec helo(state()) -> et_gen_server:handle_continue_ret(state()).
+helo(State) ->
+  Cmd = smtp_proto:encode_helo(smtp:fqdn()),
+  case exec(State, Cmd, 250, 300_000) of
+    {ok, _, NewParser} ->
+      {noreply, State#{parser => NewParser}};
+    {error, {unexpected_code, #{code := Code, text := [Text|_]}, NewParser}} ->
+      {stop, {unexpected_code, Code, Text}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
   end.
 
 -spec exec(state(), smtp_proto:command(), smtp_proto:code(), timeout()) ->
