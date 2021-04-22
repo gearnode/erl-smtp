@@ -173,8 +173,7 @@ send(Transport, Socket, Packet) ->
     ok ->
       ok;
     {error, Reason} ->
-      ?LOG_ERROR("write packet failed: ~p", [Reason]),
-      {error, Reason}
+      {error, {connection_error, Reason}}
   end.
 
 -spec recv(transport(), Socket, timeout(), smtp_parser:parser()) ->
@@ -193,8 +192,7 @@ recv(Transport, Socket, Timeout, Parser) ->
         {more, NewParser} ->
           recv(Transport, Socket, Timeout, NewParser);
         {error, Reason} ->
-          ?LOG_ERROR("parse smtp reply failed: ~p", [Reason]),
-          {error, Reason}
+          {error, {parse_error, Reason}}
         end;
     {error, Reason} ->
       ?LOG_ERROR("receive packet failed: ~p", [Reason]),
