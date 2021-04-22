@@ -42,8 +42,8 @@ encode_rset() ->
   <<"RSET\r\n">>.
 
 -spec encode_vrfy(binary()) -> command().
-encode_vrfy(Bin) ->
-  <<"VRFY", " ", Bin/binary, "\r\n">>.
+encode_vrfy(Id) ->
+  <<"VRFY", " ", Id/binary, "\r\n">>.
 
 -spec encode_help() -> command().
 encode_help() ->
