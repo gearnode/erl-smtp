@@ -155,8 +155,8 @@ greeting_message(#{transport := T, socket := S, parser := P} = State) ->
   case recv(T, S, 300_000, P) of
     {ok, #{code := 220}, NewParser} ->
       ehlo(State#{parser => NewParser});
-    {ok, #{code := Code, text := [Text|_]}, NewParser} ->
-      {stop, {unexpected_code, Code, Text}, State#{parser => NewParser}};
+    {ok, #{code := Code, lines := [Line|_]}, NewParser} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
   end.
@@ -179,13 +179,13 @@ helo(State) ->
   case exec(State, Cmd, 250, 300_000) of
     {ok, _, NewParser} ->
       {noreply, State#{parser => NewParser}};
-    {error, {unexpected_code, #{code := Code, text := [Text|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Text}, State#{parser => NewParser}};
+    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
   end.
 
--spec exec(state(), smtp_proto:command(), smtp_proto:code(), timeout()) ->
+-spec exec(state(), smtp_proto:command(), smtp_parser:code(), timeout()) ->
         smtp_parser:parse_result() | {error, term()}.
 exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
   case send(T, S, Command) of

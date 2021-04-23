@@ -16,14 +16,20 @@
 
 -export([new/1, parse/2]).
 
--export_type([msg_type/0, msg/0, parser/0, state/0,
-              parse_result/0, parse_error_reason/0]).
-
+-export_type([msg_type/0, msg/0, lines/0, line/0, separator/0, parser/0,
+              state/0, code/0, parse_result/0, parse_error_reason/0]).
 
 -type msg_type() :: command | reply.
 
--type msg() :: #{code => smtp_proto:code(),
-                 text => [smtp_proto:text()]}.
+-type code() :: 001..599.
+
+-type lines() :: [line()].
+-type line() :: binary().
+
+-type separator() :: minus | sp.
+
+-type msg() :: #{code => code(),
+                 lines => lines()}.
 
 -type parser() :: #{data := binary(),
                     state := state(),
@@ -74,15 +80,15 @@ parse(Parser = #{data := Data, msg_type := reply, state := reply_line}) ->
 
 parse(Parser = #{state := final, msg := Msg0}) ->
   Parser2 = maps:remove(msg, Parser),
-  Msg = Msg0#{text => lists:reverse(maps:get(text, Msg0))},
+  Msg = Msg0#{lines => lists:reverse(maps:get(lines, Msg0))},
   {ok, Msg, Parser2#{state => initial}}.
 
 -spec parse_first_line(parser(), binary(), binary()) ->
         parse_result().
 parse_first_line(Parser, Line, Rest) ->
-  case smtp_proto:parse_reply(Line) of
-    {Code, Sep, LineText} ->
-      Msg = #{code => Code, text => [LineText]},
+  case parse_reply_line(Line) of
+    {Code, Sep, NewLine} ->
+      Msg = #{code => Code, lines => [NewLine]},
       Parser2 = Parser#{data => Rest, msg => Msg},
 
       case Sep of
@@ -90,18 +96,18 @@ parse_first_line(Parser, Line, Rest) ->
         minus -> parse(Parser2)
       end;
     {error, Reason} ->
-      throw({error, Reason})
+      throw({error, {invalid_line, Reason}})
   end.
 
 -spec parse_continuation_line(parser(), binary(), binary()) ->
         parse_result().
 parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
   Code = maps:get(code, Msg),
-  Text = maps:get(text, Msg),
+  Lines = maps:get(lines, Msg),
 
-  case smtp_proto:parse_reply(Line) of
-    {Code, Sep, LineText} ->
-      Msg2 = Msg#{text => [LineText | Text]},
+  case parse_reply_line(Line) of
+    {Code, Sep, NewLine} ->
+      Msg2 = Msg#{lines => [NewLine | Lines]},
       Parser2 = Parser#{data => Rest, msg => Msg2},
 
       case Sep of
@@ -109,7 +115,51 @@ parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
         minus -> parse(Parser2)
       end;
     {_, _, _} ->
-      throw({error, invalid_reply});
+      throw({error, {invalid_line, code_mismatch}});
     {error, Reason} ->
-      throw({error, Reason})
+      throw({error, {invalid_line, Reason}})
+  end.
+
+-spec parse_reply_line(binary()) ->
+        {code(), separator(), line()} | {error, Reason}
+          when Reason :: invalid_syntax
+                       | invalid_separator
+                       | invalid_code.
+parse_reply_line(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
+  case parse_code(Code0) of
+    {ok, Code} ->
+      case parse_separator(Separator0) of
+        {error, Reason} ->
+          {error, Reason};
+        {ok, Separator} ->
+          {Code, Separator, Rest}
+      end;
+    {error, Reason} ->
+      {error, Reason}
+  end;
+parse_reply_line(_) ->
+  {error, invalid_syntax}.
+
+-spec parse_separator(binary()) ->
+        {ok, separator()} | {error, term()}.
+parse_separator(<<" ">>) ->
+  {ok, sp};
+parse_separator(<<"-">>) ->
+  {ok, minus};
+parse_separator(_) ->
+  {error, invalid_separator}.
+
+-spec parse_code(binary()) ->
+        {ok, pos_integer()} | {error, term()}.
+parse_code(Value) ->
+  try
+    binary_to_integer(Value)
+  of
+    N when N > 0, N < 600 ->
+      {ok, N};
+    _ ->
+      {error, invalid_code}
+  catch
+    error:_ ->
+      {error, invalid_code}
   end.

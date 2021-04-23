@@ -21,7 +21,7 @@ parse_reply_test() ->
 
   %% One liner and complete reply
   ?assertEqual({ok,
-                #{code => 220, text => [<<"mail.example.com ESMTP Postfix">>]},
+                #{code => 220, lines => [<<"mail.example.com ESMTP Postfix">>]},
                 #{data => <<>>, state => initial, msg_type => reply}},
                smtp_parser:parse(Parser, <<"220 mail.example.com ESMTP Postfix\r\n">>)),
 
@@ -34,7 +34,7 @@ parse_reply_test() ->
   {ok, Reply, Parser3} =
     smtp_parser:parse(Parser2, <<".example.com ESMTP Postfix\r\n">>),
 
-  ?assertEqual(#{code => 220, text => [<<"mail.example.com ESMTP Postfix">>]},
+  ?assertEqual(#{code => 220, lines => [<<"mail.example.com ESMTP Postfix">>]},
                Reply),
   ?assertEqual(#{data => <<>>, state => initial, msg_type => reply},
                Parser3),
@@ -43,45 +43,58 @@ parse_reply_test() ->
   MultiLineReply = <<"220-mail.example.com ESMTP Postfix\r\n220-\r\n220-System Info:  This is a Postfix mail server\r\n220-.             running a multiline SMTP greeting patch\r\n220-\r\n220-Further Info: See http://www.postfix.org\r\n220-\r\n220-Site Contact: John Smith, Postmaster\r\n220-Email:        <postmaster@example.com>\r\n220-Telephone:    +1-123-456-7890\r\n220-\r\n220 Please don't send me SPAM here - we don't like it\r\n">>,
   ?assertEqual({ok,
                #{code => 220,
-                 text => [<<"mail.example.com ESMTP Postfix">>,
-                          <<"">>,
-                          <<"System Info:  This is a Postfix mail server">>,
-                          <<".             running a multiline SMTP greeting patch">>,
-                          <<"">>,
-                          <<"Further Info: See http://www.postfix.org">>,
-                          <<"">>,
-                          <<"Site Contact: John Smith, Postmaster">>,
-                          <<"Email:        <postmaster@example.com>">>,
-                          <<"Telephone:    +1-123-456-7890">>,
-                          <<"">>,
-                          <<"Please don't send me SPAM here - we don't like it">>]},
+                 lines => [<<"mail.example.com ESMTP Postfix">>,
+                           <<"">>,
+                           <<"System Info:  This is a Postfix mail server">>,
+                           <<".             running a multiline SMTP greeting patch">>,
+                           <<"">>,
+                           <<"Further Info: See http://www.postfix.org">>,
+                           <<"">>,
+                           <<"Site Contact: John Smith, Postmaster">>,
+                           <<"Email:        <postmaster@example.com>">>,
+                           <<"Telephone:    +1-123-456-7890">>,
+                           <<"">>,
+                           <<"Please don't send me SPAM here - we don't like it">>]},
                  #{data => <<>>, state => initial, msg_type => reply}},
                smtp_parser:parse(Parser, MultiLineReply)),
 
   %% Many reply
   Replies = <<"220 mail.example.com ESMTP Postfix\r\n220-mail.example.com ESMTP Postfix\r\n220 welcome!\r\n">>,
   {ok, Reply1, Parser4} = smtp_parser:parse(Parser, Replies),
-  ?assertEqual(#{code => 220, text => [<<"mail.example.com ESMTP Postfix">>]},
+  ?assertEqual(#{code => 220, lines => [<<"mail.example.com ESMTP Postfix">>]},
                Reply1),
   ?assertEqual(#{state => initial, msg_type => reply,
                  data => <<"220-mail.example.com ESMTP Postfix\r\n220 welcome!\r\n">>},
                Parser4),
 
   {ok, Reply2, Parser5}  = smtp_parser:parse(Parser4, <<>>),
-  ?assertEqual(#{code => 220, text => [<<"mail.example.com ESMTP Postfix">>,
+  ?assertEqual(#{code => 220, lines => [<<"mail.example.com ESMTP Postfix">>,
                                        <<"welcome!">>]},
                Reply2),
   ?assertEqual(#{data => <<>>, state => initial, msg_type => reply},
                Parser5),
 
   %% Errors
-  ?assertEqual({error, invalid_line},
+  ?assertEqual({error, {invalid_line, invalid_syntax}},
                smtp_parser:parse(Parser, <<"\r\n">>)),
-  ?assertEqual({error, invalid_line},
+
+  ?assertEqual({error, {invalid_line, invalid_syntax}},
                smtp_parser:parse(Parser, <<"999\r\n">>)),
-  ?assertEqual({error, invalid_separator},
+
+  ?assertEqual({error, {invalid_line, invalid_separator}},
                smtp_parser:parse(Parser, <<"200_hello\r\n">>)),
-  ?assertEqual({error, invalid_reply},
+
+  ?assertEqual({error, {invalid_line,code_mismatch}},
                smtp_parser:parse(Parser, <<"220-mail.example.com ESMTP Postfix\r\n200 welcome!\r\n">>)),
-  ?assertEqual({error, invalid_separator},
-               smtp_parser:parse(Parser, <<"220-mail.example.com ESMTP Postfix\r\n220_welcome!\r\n">>)).
+
+  ?assertEqual({error, {invalid_line, invalid_separator}},
+               smtp_parser:parse(Parser, <<"220-mail.example.com ESMTP Postfix\r\n220_welcome!\r\n">>)),
+
+  ?assertEqual({error, {invalid_line, invalid_code}},
+               smtp_parser:parse(Parser, <<"999 hello\r\n">>)),
+
+  ?assertEqual({error, {invalid_line, invalid_separator}},
+               smtp_parser:parse(Parser, <<"2000 hello\r\n">>)),
+
+  ?assertEqual({error, {invalid_line, invalid_code}},
+               smtp_parser:parse(Parser, <<"AAA hello\r\n">>)).

@@ -17,14 +17,9 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
-         decode_ehlo_reply/1,
-         parse_reply/1]).
+         decode_ehlo_reply/1]).
 
--export_type([code/0, separator/0, text/0, command/0]).
-
--type code() :: 001..599.
--type separator() :: minus | sp.
--type text() :: binary().
+-export_type([command/0]).
 
 -type command() :: binary().
 
@@ -98,44 +93,3 @@ decode_ehlo_extensions([<<"DSN">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"DSN">>, true} | Acc]);
 decode_ehlo_extensions([Bin | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{Bin, false} | Acc]).
-
--spec parse_reply(binary()) ->
-        {code(), separator(), text()} | {error, term()}.
-parse_reply(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
-  case parse_code(Code0) of
-    {ok, Code} ->
-      case parse_separator(Separator0) of
-        {error, Reason} ->
-          {error, Reason};
-        {ok, Separator} ->
-          {Code, Separator, Rest}
-      end;
-    {error, Reason} ->
-      {error, Reason}
-  end;
-parse_reply(_) ->
-  {error, invalid_line}.
-
--spec parse_separator(binary()) ->
-        {ok, separator()} | {error, term()}.
-parse_separator(<<" ">>) ->
-  {ok, sp};
-parse_separator(<<"-">>) ->
-  {ok, minus};
-parse_separator(_) ->
-  {error, invalid_separator}.
-
--spec parse_code(binary()) ->
-        {ok, pos_integer()} | {error, term()}.
-parse_code(Value) ->
-  try
-    binary_to_integer(Value)
-  of
-    N when N > 0, N < 600 ->
-      {ok, N};
-    _ ->
-      {error, invalid_code}
-  catch
-    error:_ ->
-      {error, invalid_code}
-  end.

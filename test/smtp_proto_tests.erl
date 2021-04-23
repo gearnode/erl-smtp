@@ -53,19 +53,3 @@ encode_noop_test_() ->
 encode_quit_test_() ->
   [?_assertEqual(<<"QUIT\r\n">>,
                  smtp_proto:encode_quit_cmd())].
-
-parse_reply_test_() ->
-  [?_assertEqual({220, sp, <<"mail.example.com Postfix">>},
-                 smtp_proto:parse_reply(<<"220 mail.example.com Postfix">>)),
-   ?_assertEqual({220, sp, <<>>},
-                 smtp_proto:parse_reply(<<"220 ">>)),
-   ?_assertEqual({220, minus, <<"d01c7054a707 ESMTP OpenSMTPD">>},
-                 smtp_proto:parse_reply(<<"220-d01c7054a707 ESMTP OpenSMTPD">>)),
-   ?_assertEqual({error, invalid_code},
-                 smtp_proto:parse_reply(<<"999-hello">>)),
-   ?_assertEqual({error, invalid_separator},
-                 smtp_proto:parse_reply(<<"2000-hello">>)),
-   ?_assertEqual({error, invalid_line},
-                 smtp_proto:parse_reply(<<>>)),
-   ?_assertEqual({error, invalid_code},
-                 smtp_proto:parse_reply(<<"AAA hello">>))].
