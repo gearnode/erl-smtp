@@ -58,19 +58,26 @@ decode_ehlo_reply_test() ->
   Reply =
     [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>,
      <<"8BITMIME">>,<<"ENHANCEDSTATUSCODES">>,<<"SIZE 36700160">>,<<"DSN">>, 
-     <<"HELP">>],
+     <<"HELP">>, <<"UNKOWNEXT">>],
   ?assertEqual(#{domain => <<"d01c7054a707">>,
                  extensions =>
                    [{<<"8BITMIME">>,true},
                     {<<"ENHANCEDSTATUSCODES">>,true},
                     {<<"SIZE">>,<<"36700160">>},
                     {<<"DSN">>,true},
-                    {<<"HELP">>,true}],
+                    {<<"HELP">>,true},
+                    {<<"UNKOWNEXT">>, false}],
                  info =>
                    <<"Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
-               smtp_proto:decode_ehlo_reply(Reply)).
+               smtp_proto:decode_ehlo_reply(Reply)),
+
+  ?assertEqual(#{domain => <<"d01c7054a707">>,
+                 extensions => [],
+                 info => <<>>},
+               smtp_proto:decode_ehlo_reply([<<"d01c7054a707">>])).
 
 decode_helo_reply_test() ->
+  ?assertEqual(#{info => <<>>}, smtp_proto:decode_helo_reply([])),
   Reply =
     [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>],
   ?assertEqual(#{info =>
