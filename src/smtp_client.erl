@@ -206,7 +206,7 @@ exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
           {error, Reason}
       end;
     {error, Reason} ->
-      {error, {connection_error, Reason}}
+      {error, Reason}
   end.
 
 -spec send(transport(), Socket, binary()) ->
