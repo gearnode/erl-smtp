@@ -185,7 +185,7 @@ helo(State) ->
       {stop, Reason, State}
   end.
 
--spec exec(state(), smtp_proto:command(), smtp_parser:code(), timeout()) ->
+-spec exec(state(), smtp_proto:command(), smtp_reply:code(), timeout()) ->
         smtp_parser:parse_result() | {error, term()}.
 exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
   case send(T, S, Command) of

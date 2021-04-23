@@ -67,7 +67,7 @@ command(Keyword) ->
 command(Keyword, Arg) ->
   <<Keyword/binary, $\s, Arg/binary, $\r, $\n>>.
 
--spec decode_ehlo_reply(smtp_parser:lines()) ->
+-spec decode_ehlo_reply(smtp_reply:lines()) ->
         term().
 decode_ehlo_reply([Bin | Rest]) ->
   {Domain, Info} =

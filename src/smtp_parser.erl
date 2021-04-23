@@ -16,20 +16,12 @@
 
 -export([new/1, parse/2]).
 
--export_type([msg_type/0, msg/0, lines/0, line/0, separator/0, parser/0,
-              state/0, code/0, parse_result/0, parse_error_reason/0]).
+-export_type([msg_type/0, msg/0, parser/0, state/0,
+              parse_result/0, parse_error_reason/0]).
 
 -type msg_type() :: command | reply.
 
--type code() :: 001..599.
-
--type lines() :: [line()].
--type line() :: binary().
-
--type separator() :: minus | sp.
-
--type msg() :: #{code => code(),
-                 lines => lines()}.
+-type msg() :: smtp_reply:reply().
 
 -type parser() :: #{data := binary(),
                     state := state(),
@@ -121,7 +113,8 @@ parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
   end.
 
 -spec parse_reply_line(binary()) ->
-        {code(), separator(), line()} | {error, Reason}
+        {smtp_reply:code(), smtp_reply:separator(), smtp_reply:line()} |
+        {error, Reason}
           when Reason :: invalid_syntax
                        | invalid_separator
                        | invalid_code.
@@ -141,7 +134,7 @@ parse_reply_line(_) ->
   {error, invalid_syntax}.
 
 -spec parse_separator(binary()) ->
-        {ok, separator()} | {error, term()}.
+        {ok, smtp_reply:separator()} | {error, term()}.
 parse_separator(<<" ">>) ->
   {ok, sp};
 parse_separator(<<"-">>) ->
@@ -150,7 +143,7 @@ parse_separator(_) ->
   {error, invalid_separator}.
 
 -spec parse_code(binary()) ->
-        {ok, pos_integer()} | {error, term()}.
+        {ok, smtp_reply:code()} | {error, term()}.
 parse_code(Value) ->
   try
     binary_to_integer(Value)
