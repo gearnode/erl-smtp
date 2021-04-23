@@ -69,3 +69,10 @@ decode_ehlo_reply_test() ->
                  info =>
                    <<"Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
                smtp_proto:decode_ehlo_reply(Reply)).
+
+decode_helo_reply_test() ->
+  Reply =
+    [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>],
+  ?assertEqual(#{info =>
+                   <<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
+               smtp_proto:decode_helo_reply(Reply)).
