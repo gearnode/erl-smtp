@@ -53,3 +53,19 @@ encode_noop_cmd_test_() ->
 encode_quit_cmd_test_() ->
   [?_assertEqual(<<"QUIT\r\n">>,
                  smtp_proto:encode_quit_cmd())].
+
+decode_ehlo_reply_test() ->
+  Reply =
+    [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>,
+     <<"8BITMIME">>,<<"ENHANCEDSTATUSCODES">>,<<"SIZE 36700160">>,<<"DSN">>, 
+     <<"HELP">>],
+  ?assertEqual(#{domain => <<"d01c7054a707">>,
+                 extensions =>
+                   [{<<"8BITMIME">>,true},
+                    {<<"ENHANCEDSTATUSCODES">>,true},
+                    {<<"SIZE">>,<<"36700160">>},
+                    {<<"DSN">>,true},
+                    {<<"HELP">>,true}],
+                 info =>
+                   <<"Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
+               smtp_proto:decode_ehlo_reply(Reply)).
