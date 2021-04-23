@@ -17,6 +17,7 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
+         decode_ehlo_reply/1,
          parse_reply/1]).
 
 -export_type([code/0, separator/0, text/0, command/0]).
@@ -70,6 +71,33 @@ command(Keyword) ->
 -spec command(binary(), binary()) -> command().
 command(Keyword, Arg) ->
   <<Keyword/binary, $\s, Arg/binary, $\r, $\n>>.
+
+-spec decode_ehlo_reply(smtp_parser:lines()) ->
+        term().
+decode_ehlo_reply([Bin | Rest]) ->
+  {Domain, Info} =
+    case binary:split(Bin, <<$\s>>) of
+      [V1, V2] -> {V1, V2};
+      [V1] -> {V1, <<>>}
+    end,
+  Extensions = decode_ehlo_extensions(Rest, []),
+  #{domain => Domain, info => Info,
+    extensions => Extensions}.
+
+decode_ehlo_extensions([], Acc) ->
+  lists:reverse(Acc);
+decode_ehlo_extensions([<<"8BITMIME">> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest, [{<<"8BITMIME">>, true} | Acc]);
+decode_ehlo_extensions([<<"ENHANCEDSTATUSCODES">> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest, [{<<"ENHANCEDSTATUSCODES">>, true} | Acc]);
+decode_ehlo_extensions([<<"SIZE", $\s, Size/binary>> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest, [{<<"SIZE">>, Size} | Acc]);
+decode_ehlo_extensions([<<"HELP">> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest,[{<<"HELP">>, true} | Acc]);
+decode_ehlo_extensions([<<"DSN">> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest,[{<<"DSN">>, true} | Acc]);
+decode_ehlo_extensions([Bin | Rest], Acc) ->
+  decode_ehlo_extensions(Rest,[{Bin, false} | Acc]).
 
 -spec parse_reply(binary()) ->
         {code(), separator(), text()} | {error, term()}.
