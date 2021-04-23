@@ -17,16 +17,18 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
-         decode_ehlo_reply/1]).
+         decode_ehlo_reply/1, decode_helo_reply/1]).
 
 -export_type([command/0]).
 
--export_type([ehlo_reply/0]).
+-export_type([ehlo_reply/0, helo_reply/0]).
 
 -type command() :: binary().
 
 -type ehlo_reply() :: #{domain := binary(), info := binary(),
                         extensions := [{binary(), term()}]}.
+
+-type helo_reply() :: #{info := binary()}.
 
 -spec encode_ehlo_cmd(uri:host()) -> command().
 encode_ehlo_cmd(DomainName) ->
@@ -97,3 +99,9 @@ decode_ehlo_extensions([<<"DSN">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"DSN">>, true} | Acc]);
 decode_ehlo_extensions([Bin | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{Bin, false} | Acc]).
+
+-spec decode_helo_reply(smtp_reply:lines()) -> helo_reply().
+decode_helo_reply([]) ->
+  #{info => <<>>};
+decode_helo_reply([Line | _]) ->
+  #{info => Line}.

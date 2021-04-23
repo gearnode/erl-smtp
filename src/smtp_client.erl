@@ -35,11 +35,14 @@
 -type tcp_option() :: gen_tcp:connect_option().
 -type tls_option() :: ssl:tls_client_option().
 
+-type server_info() :: smtp_proto:ehlo_reply()
+                     | smtp_proto:helo_reply().
+
 -type state() :: #{options := options(),
                    transport := transport(),
                    parser := smtp_parser:parser(),
                    socket := inet:socket() | ssl:sslsocket(),
-                   server_info => smtp_proto:ehlo_reply()}.
+                   server_info => server_info()}.
 
 -type transport() :: tcp | tls.
 
@@ -180,8 +183,9 @@ ehlo(State) ->
 helo(State) ->
   Cmd = smtp_proto:encode_helo_cmd(smtp:fqdn()),
   case exec(State, Cmd, 250, 300_000) of
-    {ok, _, NewParser} ->
-      {noreply, State#{parser => NewParser}};
+    {ok, #{lines := Lines}, NewParser} ->
+      Reply = smtp_proto:decode_helo_reply(Lines),
+      {noreply, State#{parser => NewParser, server_info => Reply}};
     {error, {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
