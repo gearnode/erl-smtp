@@ -21,7 +21,12 @@
 
 -export_type([command/0]).
 
+-export_type([ehlo_reply/0]).
+
 -type command() :: binary().
+
+-type ehlo_reply() :: #{domain := binary(), info := binary(),
+                        extensions := [{binary(), term()}]}.
 
 -spec encode_ehlo_cmd(uri:host()) -> command().
 encode_ehlo_cmd(DomainName) ->
@@ -67,8 +72,7 @@ command(Keyword) ->
 command(Keyword, Arg) ->
   <<Keyword/binary, $\s, Arg/binary, $\r, $\n>>.
 
--spec decode_ehlo_reply(smtp_reply:lines()) ->
-        term().
+-spec decode_ehlo_reply(smtp_reply:lines()) -> ehlo_reply().
 decode_ehlo_reply([Bin | Rest]) ->
   {Domain, Info} =
     case binary:split(Bin, <<$\s>>) of
