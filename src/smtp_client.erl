@@ -224,7 +224,14 @@ maybe_starttls(State) ->
     required ->
       starttls(State);
     best_effort ->
-      starttls(State)
+      case starttls(State) of
+        {noreply, State} ->
+          {noreply, State};
+        {stop, {unexpected_code, _, _}, State} ->
+          {noreply, State};
+        {stop, Reason, State} ->
+          {stop, Reason, State}
+      end
   end.
 
 -spec starttls(state()) -> et_gen_server:handle_continue_ret(state()).
@@ -245,12 +252,7 @@ starttls(#{socket := Socket, options := Options} = State) ->
       end;
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      case get_starttls_policy_option(State) of
-        required ->
-          {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
-        best_effort ->
-          {noreply, State#{parser => NewParser}}
-      end;
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
   end.
