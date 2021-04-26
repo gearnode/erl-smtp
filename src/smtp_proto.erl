@@ -97,6 +97,8 @@ decode_ehlo_extensions([<<"HELP">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"HELP">>, true} | Acc]);
 decode_ehlo_extensions([<<"DSN">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"DSN">>, true} | Acc]);
+decode_ehlo_extensions([<<"STARTTLS">> | Rest], Acc) ->
+  decode_ehlo_extensions(Rest,[{<<"STARTTLS">>, true} | Acc]);
 decode_ehlo_extensions([Bin | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{Bin, false} | Acc]).
 
