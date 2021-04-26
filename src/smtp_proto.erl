@@ -38,30 +38,37 @@ encode_ehlo_cmd(DomainName) ->
 encode_helo_cmd(DomainName) ->
   command(<<"HELO">>, DomainName).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.5
 -spec encode_rset_cmd() -> command().
 encode_rset_cmd() ->
   command(<<"RSET">>).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.6
 -spec encode_vrfy_cmd(binary()) -> command().
 encode_vrfy_cmd(Id) ->
   command(<<"VRFY">>, Id).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.7
 -spec encode_expn_cmd(binary()) -> command().
 encode_expn_cmd(Id) ->
   command(<<"EXPN">>, Id).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.8
 -spec encode_help_cmd() -> command().
 encode_help_cmd() ->
   command(<<"HELP">>).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.8
 -spec encode_help_cmd(binary()) -> command().
 encode_help_cmd(Arg) ->
   command(<<"HELP">>, Arg).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.9
 -spec encode_noop_cmd() -> command().
 encode_noop_cmd() ->
   command(<<"NOOP">>).
 
+%% https://tools.ietf.org/html/rfc5321#section-4.1.1.10
 -spec encode_quit_cmd() -> command().
 encode_quit_cmd() ->
   command(<<"QUIT">>).
