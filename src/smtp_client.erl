@@ -29,7 +29,7 @@
                      tcp_options => [tcp_option()],
                      tls_options => [tls_option()],
                      connection_timeout => timeout(),
-                     read_timeout => timeout(),
+                     read_timeouts => command_timeout(),
                      log_requests => boolean()}.
 
 -type tcp_option() :: gen_tcp:connect_option().
@@ -45,6 +45,8 @@
                    server_info => server_info()}.
 
 -type transport() :: tcp | tls.
+
+-type command_timeout() :: #{binary() => timeout()}.
 
 -spec start_link(options()) -> Result when
     Result :: {ok, pid()} | ignore | {error, term()}.
@@ -156,7 +158,8 @@ host_address(Host) ->
 
 -spec greeting_message(state()) -> et_gen_server:handle_continue_ret(state()).
 greeting_message(#{transport := T, socket := S, parser := P} = State) ->
-  case recv(T, S, 300_000, P) of
+  Timeout = get_read_timeout_option(State, <<"INITIAL">>, 60_000),
+  case recv(T, S, Timeout, P) of
     {ok, #{code := 220}, NewParser} ->
       ehlo(State#{parser => NewParser});
     {ok, #{code := Code, lines := [Line|_]}, NewParser} ->
@@ -168,7 +171,8 @@ greeting_message(#{transport := T, socket := S, parser := P} = State) ->
 -spec ehlo(state()) -> et_gen_server:handle_continue_ret(state()).
 ehlo(State) ->
   Cmd = smtp_proto:encode_ehlo_cmd(smtp:fqdn()),
-  case exec(State, Cmd, 250, 300_000) of
+  Timeout = get_read_timeout_option(State, <<"EHLO">>, 60_000),
+  case exec(State, Cmd, 250, Timeout) of
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_ehlo_reply(Lines),
       NewState = State#{server_info => Reply, parser => NewParser},
@@ -182,7 +186,8 @@ ehlo(State) ->
 -spec helo(state()) -> et_gen_server:handle_continue_ret(state()).
 helo(State) ->
   Cmd = smtp_proto:encode_helo_cmd(smtp:fqdn()),
-  case exec(State, Cmd, 250, 300_000) of
+  Timeout = get_read_timeout_option(State, <<"HELO">>, 60_000),
+  case exec(State, Cmd, 250, Timeout) of
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
       {noreply, State#{parser => NewParser, server_info => Reply}};
@@ -245,3 +250,8 @@ recv(Transport, Socket, Timeout, Parser) ->
     {error, Reason} ->
       {error, {connection_error, Reason}}
     end.
+
+-spec get_read_timeout_option(state(), binary(), timeout()) -> timeout().
+get_read_timeout_option(State, Command, Default) ->
+  ReadTimeoutOptions = maps:get(read_timeouts, State),
+  maps:get(Command, ReadTimeoutOptions, Default).
