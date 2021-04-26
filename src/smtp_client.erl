@@ -253,5 +253,6 @@ recv(Transport, Socket, Timeout, Parser) ->
 
 -spec get_read_timeout_option(state(), binary(), timeout()) -> timeout().
 get_read_timeout_option(State, Command, Default) ->
-  ReadTimeoutOptions = maps:get(read_timeouts, State),
+  Options = maps:get(options, State),
+  ReadTimeoutOptions = maps:get(read_timeouts, Options),
   maps:get(Command, ReadTimeoutOptions, Default).
