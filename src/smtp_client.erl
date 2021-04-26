@@ -21,11 +21,13 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
--export_type([options/0, tcp_option/0, tls_option/0, transport/0]).
+-export_type([options/0, tcp_option/0, tls_option/0, transport/0,
+              command_timeout/0, starttls_policy/0]).
 
 -type options() :: #{host => uri:host(),
                      port => uri:port_number(),
                      transport => transport(),
+                     starttls => starttls_policy(),
                      tcp_options => [tcp_option()],
                      tls_options => [tls_option()],
                      connection_timeout => timeout(),
@@ -42,9 +44,12 @@
                    transport := transport(),
                    parser := smtp_parser:parser(),
                    socket := inet:socket() | ssl:sslsocket(),
+                   starttls_done := boolean(),
                    server_info => server_info()}.
 
 -type transport() :: tcp | tls.
+
+-type starttls_policy() :: disabled | required | best_effort.
 
 -type command_timeout() :: #{binary() => timeout()}.
 
@@ -124,6 +129,7 @@ connect(Options) ->
       State = #{options => Options,
                 transport => Transport,
                 socket => Socket,
+                starttls_done => false,
                 parser => smtp_parser:new(reply)},
       {ok, State, {continue, ehlo}};
     {error, Reason} ->
@@ -176,7 +182,12 @@ ehlo(State) ->
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_ehlo_reply(Lines),
       NewState = State#{server_info => Reply, parser => NewParser},
-      {noreply, NewState};
+      case maps:get(starttls_done, State) of
+        true ->
+          {noreply, NewState};
+        false ->
+          maybe_starttls(NewState)
+      end;
     {error, {unexpected_code, _, NewParser}} ->
       helo(State#{parser => NewParser});
     {error, Reason} ->
@@ -190,9 +201,56 @@ helo(State) ->
   case exec(State, Cmd, 250, Timeout) of
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
-      {noreply, State#{parser => NewParser, server_info => Reply}};
+      NewState = State#{parser => NewParser, server_info => Reply},
+      case maps:get(starttls_done, State) of
+        true ->
+          {noreply, NewState};
+        false ->
+          maybe_starttls(NewState)
+      end;
     {error, {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end.
+
+-spec maybe_starttls(state()) -> et_gen_server:handle_continue_ret(state()).
+maybe_starttls(#{transport := tls} = State) ->
+  {noreply, State};
+maybe_starttls(State) ->
+  case get_starttls_policy_option(State) of
+    disabled ->
+      {noreply, State};
+    required ->
+      starttls(State);
+    best_effort ->
+      starttls(State)
+  end.
+
+-spec starttls(state()) -> et_gen_server:handle_continue_ret(state()).
+starttls(#{socket := Socket, options := Options} = State) ->
+  Cmd = smtp_proto:encode_starttls_cmd(),
+  Timeout = get_read_timeout_option(State, <<"STARTTLS">>, 60_000),
+  case exec(State, Cmd, 220, Timeout) of
+    {ok, _, NewParser} ->
+      TLSOptions = maps:get(tls_options, Options, []),
+      case ssl:connect(Socket, TLSOptions) of
+        {ok, SSLSocket} ->
+          NewState =
+            State#{transport => tls, starttls_done => true,
+                   socket => SSLSocket, parser => NewParser},
+          ehlo(NewState);
+        {error, Reason} ->
+          {stop, {connection_error, Reason}, State}
+      end;
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      case get_starttls_policy_option(State) of
+        required ->
+          {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+        best_effort ->
+          {noreply, State#{parser => NewParser}}
+      end;
     {error, Reason} ->
       {stop, Reason, State}
   end.
@@ -254,5 +312,10 @@ recv(Transport, Socket, Timeout, Parser) ->
 -spec get_read_timeout_option(state(), binary(), timeout()) -> timeout().
 get_read_timeout_option(State, Command, Default) ->
   Options = maps:get(options, State),
-  ReadTimeoutOptions = maps:get(read_timeouts, Options),
+  ReadTimeoutOptions = maps:get(read_timeouts, Options, #{}),
   maps:get(Command, ReadTimeoutOptions, Default).
+
+-spec get_starttls_policy_option(state()) -> starttls_policy().
+get_starttls_policy_option(State) ->
+  Options = maps:get(options, State),
+  maps:get(starttls, Options, disabled).
