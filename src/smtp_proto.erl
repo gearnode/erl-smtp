@@ -28,7 +28,7 @@
 -type ehlo_reply() :: #{domain := binary(), info := binary(),
                         extensions := [{binary(), term()}]}.
 
--type helo_reply() :: #{info := binary()}.
+-type helo_reply() :: #{domain := binary(), info := binary()}.
 
 -spec encode_ehlo_cmd(uri:host()) -> command().
 encode_ehlo_cmd(DomainName) ->
@@ -103,5 +103,10 @@ decode_ehlo_extensions([Bin | Rest], Acc) ->
 -spec decode_helo_reply(smtp_reply:lines()) -> helo_reply().
 decode_helo_reply([]) ->
   #{info => <<>>};
-decode_helo_reply([Line | _]) ->
-  #{info => Line}.
+decode_helo_reply([Bin | _]) ->
+  {Domain, Info} =
+    case binary:split(Bin, <<$\s>>) of
+      [V1, V2] -> {V1, V2};
+      [V1] -> {V1, <<>>}
+    end,
+  #{domain => Domain, info => Info}.

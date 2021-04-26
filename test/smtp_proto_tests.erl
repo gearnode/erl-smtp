@@ -80,6 +80,7 @@ decode_helo_reply_test() ->
   ?assertEqual(#{info => <<>>}, smtp_proto:decode_helo_reply([])),
   Reply =
     [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>],
-  ?assertEqual(#{info =>
-                   <<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
+  ?assertEqual(#{domain => <<"d01c7054a707">>,
+                 info =>
+                   <<"Hello basile.localdomain [172.26.0.1], pleased to meet you">>},
                smtp_proto:decode_helo_reply(Reply)).
