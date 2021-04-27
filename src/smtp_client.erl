@@ -186,12 +186,7 @@ ehlo(State) ->
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_ehlo_reply(Lines),
       NewState = State#{server_info => Reply, parser => NewParser},
-      case NewState of
-        #{transport := tls} ->
-          maybe_auth(NewState);
-        #{transport := tcp} ->
-          maybe_starttls(NewState)
-      end;
+      maybe_starttls(NewState);
     {error, {unexpected_code, _, NewParser}} ->
       helo(State#{parser => NewParser});
     {error, Reason} ->
@@ -206,12 +201,7 @@ helo(State) ->
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
       NewState = State#{parser => NewParser, server_info => Reply},
-      case NewState of
-        #{transport := tls} ->
-          maybe_auth(NewState);
-        #{transport := tcp} ->
-          maybe_starttls(NewState)
-      end;
+      maybe_starttls(NewState);
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
@@ -220,6 +210,8 @@ helo(State) ->
   end.
 
 -spec maybe_starttls(state()) -> et_gen_server:handle_continue_ret(state()).
+maybe_starttls(#{transport := tls} = State) ->
+  maybe_auth(State);
 maybe_starttls(State) ->
   case get_starttls_policy_option(State) of
     disabled ->
