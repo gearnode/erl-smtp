@@ -112,6 +112,9 @@ decode_ehlo_extensions([<<"DSN">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"DSN">>, true} | Acc]);
 decode_ehlo_extensions([<<"STARTTLS">> | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{<<"STARTTLS">>, true} | Acc]);
+decode_ehlo_extensions([<<"AUTH", $\s, Bin/binary>> | Rest], Acc) ->
+  AvailableMechanisms = binary:split(Bin, <<$\s>>, [global]),
+  decode_ehlo_extensions(Rest, [{<<"AUTH">>, AvailableMechanisms} | Acc]);
 decode_ehlo_extensions([Bin | Rest], Acc) ->
   decode_ehlo_extensions(Rest,[{Bin, false} | Acc]).
 
