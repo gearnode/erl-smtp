@@ -262,6 +262,19 @@ starttls(#{socket := Socket, options := Options} = State) ->
       {stop, Reason, State}
   end.
 
+-spec set_socket_active(state(), boolean() | pos_integer()) -> ok.
+set_socket_active(#{transport := Transport, socket := Socket}, Active) ->
+  Setopts = case Transport of
+              tcp -> fun inet:setopts/2;
+              tls -> fun ssl:setopts/2
+            end,
+  case Setopts(Socket, [{active, Active}]) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      throw({error, {connection_error, Reason}})
+  end.
+
 -spec exec(state(), smtp_proto:command(), smtp_reply:code(), timeout()) ->
         smtp_parser:parse_result() | {error, term()}.
 exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
