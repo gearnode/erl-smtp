@@ -17,7 +17,7 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
-         encode_starttls_cmd/0,
+         encode_starttls_cmd/0, encode_auth_cmd/1,
          decode_ehlo_reply/1, decode_helo_reply/1]).
 
 -export_type([command/0]).
@@ -78,6 +78,11 @@ encode_quit_cmd() ->
 -spec encode_starttls_cmd() -> command().
 encode_starttls_cmd() ->
   command(<<"STARTTLS">>).
+
+%% https://tools.ietf.org/html/rfc4616
+-spec encode_auth_cmd(binary()) -> command().
+encode_auth_cmd(Mechanism) ->
+  command(<<"AUTH">>, Mechanism).
 
 -spec command(binary()) -> command().
 command(Keyword) ->
