@@ -44,7 +44,6 @@
                    transport := transport(),
                    parser := smtp_parser:parser(),
                    socket := inet:socket() | ssl:sslsocket(),
-                   starttls_done := boolean(),
                    server_info => server_info()}.
 
 -type transport() :: tcp | tls.
@@ -135,7 +134,6 @@ connect(Options) ->
       State = #{options => Options,
                 transport => Transport,
                 socket => Socket,
-                starttls_done => false,
                 parser => smtp_parser:new(reply)},
       {ok, State, {continue, ehlo}};
     {error, Reason} ->
@@ -188,10 +186,10 @@ ehlo(State) ->
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_ehlo_reply(Lines),
       NewState = State#{server_info => Reply, parser => NewParser},
-      case maps:get(starttls_done, State) of
-        true ->
-          {noreply, NewState};
-        false ->
+      case NewState of
+        #{transport := tls} ->
+          maybe_auth(NewState);
+        #{transport := tcp} ->
           maybe_starttls(NewState)
       end;
     {error, {unexpected_code, _, NewParser}} ->
@@ -208,10 +206,10 @@ helo(State) ->
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
       NewState = State#{parser => NewParser, server_info => Reply},
-      case maps:get(starttls_done, State) of
-        true ->
-          {noreply, NewState};
-        false ->
+      case NewState of
+        #{transport := tls} ->
+          maybe_auth(NewState);
+        #{transport := tcp} ->
           maybe_starttls(NewState)
       end;
     {error,
@@ -222,8 +220,6 @@ helo(State) ->
   end.
 
 -spec maybe_starttls(state()) -> et_gen_server:handle_continue_ret(state()).
-maybe_starttls(#{transport := tls} = State) ->
-  {noreply, State};
 maybe_starttls(State) ->
   case get_starttls_policy_option(State) of
     disabled ->
@@ -244,8 +240,7 @@ starttls(#{socket := Socket, options := Options} = State) ->
       case ssl:connect(Socket, TLSOptions) of
         {ok, SSLSocket} ->
           NewState =
-            State#{transport => tls, starttls_done => true,
-                   socket => SSLSocket, parser => NewParser},
+            State#{transport => tls, socket => SSLSocket, parser => NewParser},
           ehlo(NewState);
         {error, Reason} ->
           {stop, {connection_error, Reason}, State}
