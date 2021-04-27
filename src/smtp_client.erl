@@ -208,7 +208,8 @@ helo(State) ->
         false ->
           maybe_starttls(NewState)
       end;
-    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
