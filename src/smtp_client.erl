@@ -99,6 +99,12 @@ handle_info({Event, _}, _State) when Event =:= tcp_closed;
   ?LOG_INFO("connection closed"),
   exit(normal);
 
+handle_info({tcp, _Socket, Data}, _State) ->
+  error({unexpected_data, Data});
+
+handle_info({ssl, _Socket, Data}, _State) ->
+  error({unexpected_data, Data});
+
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
