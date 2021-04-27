@@ -30,6 +30,7 @@
                      starttls => starttls_policy(),
                      tcp_options => [tcp_option()],
                      tls_options => [tls_option()],
+                     authentication => authentication(),
                      connection_timeout => timeout(),
                      read_timeouts => command_timeout(),
                      log_requests => boolean()}.
@@ -49,6 +50,10 @@
 -type transport() :: tcp | tls.
 
 -type starttls_policy() :: disabled | required | best_effort.
+
+-type authentication() :: #{mechanism := binary(),
+                            username := binary(),
+                            password := binary()}.
 
 -type command_timeout() :: #{binary() => timeout()}.
 
