@@ -272,7 +272,7 @@ set_socket_active(#{transport := Transport, socket := Socket}, Active) ->
     ok ->
       ok;
     {error, Reason} ->
-      throw({error, {connection_error, Reason}})
+      {error, {connection_error, Reason}}
   end.
 
 -spec exec(state(), smtp_proto:command(), smtp_reply:code(), timeout()) ->
