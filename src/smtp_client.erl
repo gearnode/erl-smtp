@@ -255,20 +255,20 @@ starttls(#{socket := Socket, options := Options} = State) ->
   end.
 
 -spec maybe_auth(state()) -> et_gen_server:handle_continue_ret(state()).
-maybe_auth(State) ->
-  Options = maps:get(options, State),
+maybe_auth(#{options := Options} = State) ->
   case maps:is_key(authentication, Options) of
     true ->
-      auth(State);
+      Authentication = maps:get(authentication, Options),
+      Mechanism = maps:get(mechanism, Authentication),
+      auth(Mechanism, State);
     false ->
       {noreply, State}
   end.
 
--spec auth(state()) -> et_gen_server:handle_continue_ret(state()).
-auth(State) ->
-  
-  io:format("XXX ~p~n", [State]),
-  {noreply, State}.
+-spec auth(Mechanism :: binary(), state()) ->
+        et_gen_server:handle_continue_ret(state()).
+auth(Mechanism, State) ->
+  {stop, {sasl_mechanism_not_supported, Mechanism}, State}.
 
 -spec set_socket_active(state(), boolean() | pos_integer()) ->
         ok | {error, term()}.
