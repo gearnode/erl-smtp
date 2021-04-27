@@ -254,7 +254,24 @@ starttls(#{socket := Socket, options := Options} = State) ->
       {stop, Reason, State}
   end.
 
--spec set_socket_active(state(), boolean() | pos_integer()) -> ok.
+-spec maybe_auth(state()) -> et_gen_server:handle_continue_ret(state()).
+maybe_auth(State) ->
+  Options = maps:get(options, State),
+  case maps:is_key(authentication, Options) of
+    true ->
+      auth(State);
+    false ->
+      {noreply, State}
+  end.
+
+-spec auth(state()) -> et_gen_server:handle_continue_ret(state()).
+auth(State) ->
+  
+  io:format("XXX ~p~n", [State]),
+  {noreply, State}.
+
+-spec set_socket_active(state(), boolean() | pos_integer()) ->
+        ok | {error, term()}.
 set_socket_active(#{transport := Transport, socket := Socket}, Active) ->
   SetOpts = case Transport of
               tcp -> fun inet:setopts/2;
