@@ -251,11 +251,11 @@ starttls(#{socket := Socket, options := Options} = State) ->
 
 -spec set_socket_active(state(), boolean() | pos_integer()) -> ok.
 set_socket_active(#{transport := Transport, socket := Socket}, Active) ->
-  Setopts = case Transport of
+  SetOpts = case Transport of
               tcp -> fun inet:setopts/2;
               tls -> fun ssl:setopts/2
             end,
-  case Setopts(Socket, [{active, Active}]) of
+  case SetOpts(Socket, [{active, Active}]) of
     ok ->
       ok;
     {error, Reason} ->
