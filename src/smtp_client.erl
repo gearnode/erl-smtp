@@ -228,20 +228,12 @@ maybe_starttls(State) ->
   end.
 
 -spec starttls(state()) -> et_gen_server:handle_continue_ret(state()).
-starttls(#{socket := Socket, options := Options} = State) ->
+starttls(State) ->
   Cmd = smtp_proto:encode_starttls_cmd(),
   Timeout = get_read_timeout_option(State, <<"STARTTLS">>, 60_000),
   case exec(State, Cmd, 220, Timeout) of
     {ok, _, NewParser} ->
-      TLSOptions = maps:get(tls_options, Options, []),
-      case ssl:connect(Socket, TLSOptions) of
-        {ok, SSLSocket} ->
-          NewState =
-            State#{transport => tls, socket => SSLSocket, parser => NewParser},
-          ehlo(NewState);
-        {error, Reason} ->
-          {stop, {connection_error, Reason}, State}
-      end;
+      ssl_handshake(State#{parser => NewParser});
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       case get_starttls_policy_option(State) of
@@ -252,6 +244,16 @@ starttls(#{socket := Socket, options := Options} = State) ->
       end;
     {error, Reason} ->
       {stop, Reason, State}
+  end.
+
+-spec ssl_handshake(state()) -> et_gen_server:handle_continue_ret(state()).
+ssl_handshake(#{options := Options, socket := Socket} = State) ->
+  TLSOptions = maps:get(tls_options, Options, []),
+  case ssl:connect(Socket, TLSOptions) of
+    {ok, SSLSocket} ->
+      ehlo(State#{transport => tls, socket => SSLSocket});
+    {error, Reason} ->
+      {stop, {connection_error, Reason}, State}
   end.
 
 -spec maybe_auth(state()) -> et_gen_server:handle_continue_ret(state()).
