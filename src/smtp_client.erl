@@ -299,8 +299,19 @@ auth(Mechanism, MechanismOptions, State) ->
 
 -spec auth(mechanism_name(), mechanism_parameters(), binary(), state()) ->
         et_gen_server:handle_continue_ret(state()).
-auth(<<"PLAIN">>, _Options, _, State) ->
-  {noreply, State};
+auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
+  Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
+  Credential = smtp_sasl:encode_plain(Username, Password),
+  Msg = <<Credential/binary, $\r, $\n>>,
+  case exec(State, Msg, 234, Timeout) of
+    {ok, _, NewParser} ->
+      {noreply, State#{parser => NewParser}};
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end;
 auth(<<"LOGIN">>, _Options, _, State) ->
   {noreply, State};
 auth(<<"CRAM-MD5">>, _Options, _Challenge, State) ->
