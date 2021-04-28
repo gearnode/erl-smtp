@@ -377,12 +377,10 @@ get_authentication_option(#{options := Options}) ->
   maps:get(authentication, Options, error).
 
 -spec get_read_timeout_option(state(), binary(), timeout()) -> timeout().
-get_read_timeout_option(State, Command, Default) ->
-  Options = maps:get(options, State),
+get_read_timeout_option(#{options := Options}, Command, Default) ->
   ReadTimeoutOptions = maps:get(read_timeouts, Options, #{}),
   maps:get(Command, ReadTimeoutOptions, Default).
 
 -spec get_starttls_policy_option(state()) -> starttls_policy().
-get_starttls_policy_option(State) ->
-  Options = maps:get(options, State),
+get_starttls_policy_option(#{options := Options}) ->
   maps:get(starttls, Options, disabled).
