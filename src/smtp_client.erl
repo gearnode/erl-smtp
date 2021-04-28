@@ -349,8 +349,8 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
       finalize(State#{parser => NewParser});
     {error, {unexpected_code, #{code := 334}, NewParser}} ->
       State2 = State#{parser => NewParser},
-      Msg = smtp_proto:encode_empty_cmd(),
-      case exec(State2, Msg, 535, Timeout) of
+      Msg2 = smtp_proto:encode_empty_cmd(),
+      case exec(State2, Msg2, 535, Timeout) of
         {ok, #{code := Code, lines := [Line|_]}, NewParser2} ->
           {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
         {error,
