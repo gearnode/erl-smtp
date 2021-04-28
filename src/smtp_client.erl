@@ -97,7 +97,7 @@ handle_continue(Msg, State) ->
 -spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
         et_gen_server:handle_call_ret(state()).
 handle_call(quit, _, State) ->
-  case quit(State) of
+  case do_quit(State) of
     {ok, State2} ->
       {stop, normal, ok, State2};
     {error, Reason, State2} ->
@@ -389,8 +389,8 @@ finalize(State) ->
       {stop, Reason}
   end.
 
--spec quit(state()) -> {ok, state()} | {error, term(), state()}.
-quit(State) ->
+-spec do_quit(state()) -> {ok, state()} | {error, term(), state()}.
+do_quit(State) ->
   Timeout = get_read_timeout_option(State, <<"QUIT">>, 60_000),
   Cmd = smtp_proto:encode_quit_cmd(),
   case set_socket_active(State, false) of
