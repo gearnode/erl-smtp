@@ -137,6 +137,12 @@ decode_helo_reply([Bin | _]) ->
     end,
   #{domain => Domain, info => Info}.
 
--spec decode_auth_reply(smtp_reply:lines()) -> auth_reply().
+-spec decode_auth_reply(smtp_reply:lines()) ->
+        {ok, auth_reply()} | {error, term()}.
 decode_auth_reply([Bin | _]) ->
-  #{challenge => Bin}.
+  case b64:decode(Bin) of
+    {ok, Challenge} ->
+      {ok, #{challenge => Challenge}};
+    {error, Reason} ->
+      {error, Reason}
+  end.
