@@ -22,7 +22,8 @@
     public_key,
     ssl,
     uri,
-    et
+    et,
+    b64
    ]},
   {env,[]},
   {modules, []},
