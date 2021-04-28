@@ -17,12 +17,13 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
-         encode_starttls_cmd/0, encode_auth_cmd/1,
-         decode_ehlo_reply/1, decode_helo_reply/1]).
+         encode_starttls_cmd/0, encode_auth_cmd/1]).
+
+-export([decode_ehlo_reply/1, decode_helo_reply/1, decode_auth_reply/1]).
 
 -export_type([command/0]).
 
--export_type([ehlo_reply/0, helo_reply/0]).
+-export_type([ehlo_reply/0, helo_reply/0, auth_reply/0]).
 
 -type command() :: binary().
 
@@ -30,6 +31,8 @@
                         extensions := [{binary(), term()}]}.
 
 -type helo_reply() :: #{domain := binary(), info := binary()}.
+
+-type auth_reply() :: #{challenge := binary()}.
 
 -spec encode_ehlo_cmd(uri:host()) -> command().
 encode_ehlo_cmd(DomainName) ->
@@ -133,3 +136,7 @@ decode_helo_reply([Bin | _]) ->
       [V1] -> {V1, <<>>}
     end,
   #{domain => Domain, info => Info}.
+
+-spec decode_auth_reply(smtp_reply:lines()) -> auth_reply().
+decode_auth_reply([Bin | _]) ->
+  #{challenge => Bin}.
