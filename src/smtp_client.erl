@@ -311,8 +311,26 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
     {error, Reason} ->
       {stop, Reason, State}
   end;
-auth(<<"LOGIN">>, _Options, _, State) ->
-  {noreply, State};
+auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
+  Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
+  {Msg1, Ms2} = smtp_sasl:encode_login(Username, Password),
+  case exec(State, Msg1, 334, Timeout) of
+    {ok, _, _} ->
+      case exec(State, Ms2, 235, Timeout) of
+        {ok, _, NewParser2} ->
+          {noreply, State#{parser => NewParser2}};
+        {error,
+         {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
+          {stop, {unexpected_code, Code, Line}, State#{parser => NewParser2}};
+        {error, Reason} ->
+          {stop, Reason, State}
+      end;
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end;
 auth(<<"CRAM-MD5">>, _Options, _, State) ->
   {noreply, State};
 auth(<<"XOAUTH">>, _Options, _, State) ->
