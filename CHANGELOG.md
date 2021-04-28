@@ -9,3 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - Support of the `STARTTLS` extension as defined by the [RFC
   3207](https://tools.ietf.org/html/rfc3207)
+- Support of the `AUTH` extension as defined by the [RFC
+  4954](https://tools.ietf.org/html/rfc4954)
+  - PLAIN
+  - LOGIN
+  - CRAM-MD5
+  - XOAUTH2
