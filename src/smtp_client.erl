@@ -272,7 +272,7 @@ maybe_auth(State) ->
     {Mechanism, _} ->
       {stop, {unsupported_sasl_mechanism, client, Mechanism}, State};
     error ->
-      {noreply, State}
+      finalize(State)
   end.
 
 -spec auth(mechanism_name(), mechanism_parameters(), state()) ->
@@ -304,7 +304,7 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Msg = smtp_sasl:encode_plain(Username, Password),
   case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
-      auth(State#{parser => NewParser});
+      finalize(State#{parser => NewParser});
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
@@ -319,7 +319,7 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
       State2 = State#{parser => NewParser},
       case exec(State2, Ms2, 235, Timeout) of
         {ok, _, NewParser2} ->
-          auth(State2#{parser => NewParser2});
+          finalize(State2#{parser => NewParser2});
         {error,
          {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
           {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
@@ -337,7 +337,7 @@ auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
   Msg = smtp_sasl:encode_cram_md5(U, P, Challenge),
   case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
-      auth(State#{parser => NewParser});
+      finalize(State#{parser => NewParser});
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser2}};
@@ -349,8 +349,8 @@ auth(<<"XOAUTH">>, _Options, _, State) ->
 auth(<<"XOAUTH2">>, _Options, _, State) ->
   {noreply, State}.
 
--spec auth(state()) -> et_gen_server:handle_continue_ret(state()).
-auth(State) ->
+-spec finalize(state()) -> et_gen_server:handle_continue_ret(state()).
+finalize(State) ->
   case set_socket_active(State, true) of
     ok ->
       {noreply, State};
