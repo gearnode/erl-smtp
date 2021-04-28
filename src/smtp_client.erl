@@ -22,7 +22,8 @@
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
-              command_timeout/0, starttls_policy/0]).
+              command_timeout/0, starttls_policy/0,
+              authentication/0, mechanism_name/0, mechanism_parameters/0]).
 
 -type options() :: #{host => uri:host(),
                      port => uri:port_number(),
@@ -51,9 +52,12 @@
 
 -type starttls_policy() :: disabled | required | best_effort.
 
--type authentication() :: #{mechanism := binary(),
-                            username := binary(),
-                            password := binary()}.
+-type authentication() :: {mechanism_name(), mechanism_parameters()}.
+
+-type mechanism_name() :: binary().
+-type mechanism_parameters() ::
+        #{username := binary(), password := binary()}
+      | #{token := binary()}.
 
 -type command_timeout() :: #{binary() => timeout()}.
 
@@ -256,20 +260,49 @@ ssl_handshake(#{options := Options, socket := Socket} = State) ->
   end.
 
 -spec maybe_auth(state()) -> et_gen_server:handle_continue_ret(state()).
-maybe_auth(#{options := Options} = State) ->
-  case maps:is_key(authentication, Options) of
-    true ->
-      Authentication = maps:get(authentication, Options),
-      Mechanism = maps:get(mechanism, Authentication),
-      auth(Mechanism, State);
-    false ->
+maybe_auth(State) ->
+  case get_authentication_option(State) of
+    {Mechanism, MechanismOptions} when
+        Mechanism =:= <<"PLAIN">>;
+        Mechanism =:= <<"LOGIN">>;
+        Mechanism =:= <<"CRAM-MD5">>;
+        Mechanism =:= <<"XOAUTH">>;
+        Mechanism =:= <<"XOAUTH2">> ->
+      auth(Mechanism, MechanismOptions, State);
+    {Mechanism, _} ->
+      {stop, {unsupported_sasl_mechanism, client, Mechanism}, State};
+    error ->
       {noreply, State}
   end.
 
--spec auth(Mechanism :: binary(), state()) ->
+-spec auth(mechanism_name(), mechanism_parameters(), state()) ->
         et_gen_server:handle_continue_ret(state()).
-auth(Mechanism, State) ->
-  {stop, {sasl_mechanism_not_supported, Mechanism}, State}.
+auth(Mechanism, MechanismOptions, State) ->
+  Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
+  Cmd = smtp_proto:encode_auth_cmd(Mechanism),
+  case exec(State, Cmd, 334, Timeout) of
+    {ok, _, NewParser} ->
+      auth(Mechanism, MechanismOptions, <<>>, State#{parser => NewParser});
+    {error, {unexpected_code, _, NewParser}} ->
+      {stop,
+       {unsupported_sasl_mechanism, server, Mechanism},
+       State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end.
+
+-spec auth(mechanism_name(), mechanism_parameters(), binary(), state()) ->
+        et_gen_server:handle_continue_ret(state()).
+auth(<<"PLAIN">>, _Options, _, State) ->
+  {noreply, State};
+auth(<<"LOGIN">>, _Options, _, State) ->
+  {noreply, State};
+auth(<<"CRAM-MD5">>, _Options, _Challenge, State) ->
+  {noreply, State};
+auth(<<"XOAUTH">>, _Options, _, State) ->
+  {noreply, State};
+auth(<<"XOAUTH2">>, _Options, _, State) ->
+  {noreply, State}.
 
 -spec set_socket_active(state(), boolean() | pos_integer()) ->
         ok | {error, term()}.
@@ -338,6 +371,10 @@ recv(Transport, Socket, Timeout, Parser) ->
     {error, Reason} ->
       {error, {connection_error, Reason}}
     end.
+
+-spec get_authentication_option(state()) -> authentication() | error.
+get_authentication_option(#{options := Options}) ->
+  maps:get(authentication, Options, error).
 
 -spec get_read_timeout_option(state(), binary(), timeout()) -> timeout().
 get_read_timeout_option(State, Command, Default) ->
