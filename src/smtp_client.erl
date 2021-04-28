@@ -301,8 +301,7 @@ auth(Mechanism, MechanismOptions, State) ->
         et_gen_server:handle_continue_ret(state()).
 auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
-  Credential = smtp_sasl:encode_plain(Username, Password),
-  Msg = <<Credential/binary, $\r, $\n>>,
+  Msg = smtp_sasl:encode_plain(Username, Password),
   case exec(State, Msg, 234, Timeout) of
     {ok, _, NewParser} ->
       {noreply, State#{parser => NewParser}};
