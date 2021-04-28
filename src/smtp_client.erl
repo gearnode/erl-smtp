@@ -348,8 +348,7 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
     {ok, _, NewParser} ->
       finalize(State#{parser => NewParser});
     {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]} = Reply, NewParser}} ->
-      io:format("XXX ~p~n", [Reply]),
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
