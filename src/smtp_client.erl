@@ -302,7 +302,7 @@ auth(Mechanism, MechanismOptions, State) ->
 auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Msg = smtp_sasl:encode_plain(Username, Password),
-  case exec(State, Msg, 234, Timeout) of
+  case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
       {noreply, State#{parser => NewParser}};
     {error,
