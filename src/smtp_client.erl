@@ -205,8 +205,7 @@ helo(State) ->
   case exec(State, Cmd, 250, Timeout) of
     {ok, #{lines := Lines}, NewParser} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
-      NewState = State#{parser => NewParser, server_info => Reply},
-      maybe_starttls(NewState);
+      maybe_starttls(State#{parser => NewParser, server_info => Reply});
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
