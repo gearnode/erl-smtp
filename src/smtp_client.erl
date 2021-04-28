@@ -332,8 +332,18 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
     {error, Reason} ->
       {stop, Reason, State}
   end;
-auth(<<"CRAM-MD5">>, _Options, _, State) ->
-  {noreply, State};
+auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
+  Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
+  Msg = smtp_sasl:encode_cram_md5(U, P, Challenge),
+  case exec(State, Msg, 235, Timeout) of
+    {ok, _, NewParser} ->
+      {noreply, State#{parser => NewParser}};
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser2}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end;
 auth(<<"XOAUTH">>, _Options, _, State) ->
   {noreply, State};
 auth(<<"XOAUTH2">>, _Options, _, State) ->
