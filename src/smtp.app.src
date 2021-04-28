@@ -23,7 +23,8 @@
     ssl,
     uri,
     et,
-    b64
+    b64,
+    hex
    ]},
   {env,[]},
   {modules, []},
