@@ -14,10 +14,16 @@
 
 -module(smtp_sasl).
 
--export([encode_plain/2]).
+-export([encode_plain/2, encode_login/2]).
 
 -spec encode_plain(binary(), binary()) -> binary().
 encode_plain(Username, Password) when is_binary(Username),
                                       is_binary(Password) ->
   b64:encode(<<0, Username/binary, 0, Password/binary, $\r, $\n>>).
 
+-spec encode_login(binary(), binary()) -> {binary(), binary()}.
+encode_login(Username, Password) when is_binary(Username),
+                                      is_binary(Password) ->
+  UsernameEnc = b64:encode(Username),
+  PasswordEnc = b64:encode(Password),
+  {<<UsernameEnc/binary, $\r, $\n>>, <<PasswordEnc/binary, $\r, $\n>>}.
