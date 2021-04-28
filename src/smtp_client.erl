@@ -281,8 +281,14 @@ auth(Mechanism, MechanismOptions, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Cmd = smtp_proto:encode_auth_cmd(Mechanism),
   case exec(State, Cmd, 334, Timeout) of
-    {ok, _, NewParser} ->
-      auth(Mechanism, MechanismOptions, <<>>, State#{parser => NewParser});
+    {ok, #{lines := Lines}, NewParser} ->
+      case smtp_proto:decode_auth_reply(Lines) of
+        {ok, #{challenge := Challenge}} ->
+          auth(Mechanism, MechanismOptions, Challenge,
+               State#{parser => NewParser});
+        {error, Reason} ->
+          {stop, Reason, State#{parser => NewParser}}
+      end;
     {error, {unexpected_code, _, NewParser}} ->
       {stop,
        {unsupported_sasl_mechanism, server, Mechanism},
