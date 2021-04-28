@@ -21,6 +21,8 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
+-export([quit/1]).
+
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
               authentication/0, mechanism_name/0, mechanism_parameters/0]).
@@ -64,6 +66,10 @@
 start_link(Options) ->
   gen_server:start_link(?MODULE, [Options], []).
 
+-spec quit(et_gen_server:ref()) -> ok | {error, term()}.
+quit(Ref) ->
+  gen_server:call(Ref, quit, infinity).
+
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   logger:update_process_metadata(#{domain => [smtp, client]}),
@@ -90,6 +96,14 @@ handle_continue(Msg, State) ->
 
 -spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
         et_gen_server:handle_call_ret(state()).
+handle_call(quit, _, State) ->
+  case quit(State) of
+    {ok, State2} ->
+      {stop, normal, ok, State2};
+    {error, Reason, State2} ->
+      {stop, normal, {error, Reason}, State2}
+  end;
+
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
@@ -373,6 +387,25 @@ finalize(State) ->
       {noreply, State};
     {error, Reason} ->
       {stop, Reason}
+  end.
+
+-spec quit(state()) -> {ok, state()} | {error, term(), state()}.
+quit(State) ->
+  Timeout = get_read_timeout_option(State, <<"QUIT">>, 60_000),
+  Cmd = smtp_proto:encode_quit_cmd(),
+  case set_socket_active(State, false) of
+    ok ->
+      case exec(State, Cmd, 221, Timeout) of
+        {ok, _, NewParser} ->
+          {ok, State#{parser => NewParser}};
+        {error,
+         {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+          {error, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+        {error, Reason} ->
+          {error, Reason, State}
+      end;
+    {error, Reason} ->
+      {error, Reason, State}
   end.
 
 -spec set_socket_active(state(), boolean() | pos_integer()) ->
