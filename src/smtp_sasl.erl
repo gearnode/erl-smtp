@@ -19,7 +19,8 @@
 -spec encode_plain(binary(), binary()) -> binary().
 encode_plain(Username, Password) when is_binary(Username),
                                       is_binary(Password) ->
-  b64:encode(<<0, Username/binary, 0, Password/binary, $\r, $\n>>).
+  Enc = b64:encode(<<0, Username/binary, 0, Password/binary>>),
+  <<Enc/binary, $\r, $\n>>.
 
 -spec encode_login(binary(), binary()) -> {binary(), binary()}.
 encode_login(Username, Password) when is_binary(Username),
