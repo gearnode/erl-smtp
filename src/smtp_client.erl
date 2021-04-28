@@ -314,7 +314,7 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   end;
 auth(<<"LOGIN">>, _Options, _, State) ->
   {noreply, State};
-auth(<<"CRAM-MD5">>, _Options, _Challenge, State) ->
+auth(<<"CRAM-MD5">>, _Options, _, State) ->
   {noreply, State};
 auth(<<"XOAUTH">>, _Options, _, State) ->
   {noreply, State};
