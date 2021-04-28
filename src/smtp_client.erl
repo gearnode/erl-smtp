@@ -315,15 +315,16 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   {Msg1, Ms2} = smtp_sasl:encode_login(Username, Password),
   case exec(State, Msg1, 334, Timeout) of
-    {ok, _, _} ->
-      case exec(State, Ms2, 235, Timeout) of
+    {ok, _, NewParser} ->
+      State2 = State#{parser => NewParser},
+      case exec(State2, Ms2, 235, Timeout) of
         {ok, _, NewParser2} ->
-          {noreply, State#{parser => NewParser2}};
+          {noreply, State2#{parser => NewParser2}};
         {error,
          {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
-          {stop, {unexpected_code, Code, Line}, State#{parser => NewParser2}};
+          {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
         {error, Reason} ->
-          {stop, Reason, State}
+          {stop, Reason, State2}
       end;
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
