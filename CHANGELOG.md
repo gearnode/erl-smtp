@@ -15,3 +15,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - LOGIN
   - CRAM-MD5
   - XOAUTH2
+- Support of the `QUIT` command as defined by the [RFC
+  5321](https://tools.ietf.org/html/rfc5321)
