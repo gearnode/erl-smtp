@@ -14,7 +14,7 @@
 
 -module(smtp_sasl).
 
--export([encode_plain/2, encode_login/2, encode_cram_md5/3]).
+-export([encode_plain/2, encode_login/2, encode_cram_md5/3, encode_xoauth2/2]).
 
 -spec encode_plain(binary(), binary()) -> binary().
 encode_plain(Username, Password) when is_binary(Username),
@@ -31,7 +31,15 @@ encode_login(Username, Password) when is_binary(Username),
 
 -spec encode_cram_md5(binary(), binary(), binary()) -> binary().
 encode_cram_md5(Username, Password, Challenge) when is_binary(Username),
-                                                    is_binary(Password) ->
+                                                    is_binary(Password),
+                                                    is_binary(Challenge) ->
   Digest = hex:encode(crypto:mac(hmac, md5, Password, Challenge)),
   Enc = b64:encode(<<Username/binary, $\s, Digest/binary>>),
+  <<Enc/binary, $\r, $\n>>.
+
+-spec encode_xoauth2(binary(), binary()) -> binary().
+encode_xoauth2(Username, AccessToken) when is_binary(Username),
+                                           is_binary(AccessToken) ->
+  Enc = b64:encode(<<"user=", Username/binary, 1,
+                     "auth=Bearer", AccessToken/binary, 1, 1>>),
   <<Enc/binary, $\r, $\n>>.

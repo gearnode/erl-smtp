@@ -55,9 +55,7 @@
 -type authentication() :: {mechanism_name(), mechanism_parameters()}.
 
 -type mechanism_name() :: binary().
--type mechanism_parameters() ::
-        #{username := binary(), password := binary()}
-      | #{token := binary()}.
+-type mechanism_parameters() :: #{username := binary(), password := binary()}.
 
 -type command_timeout() :: #{binary() => timeout()}.
 
@@ -266,7 +264,6 @@ maybe_auth(State) ->
         Mechanism =:= <<"PLAIN">>;
         Mechanism =:= <<"LOGIN">>;
         Mechanism =:= <<"CRAM-MD5">>;
-        Mechanism =:= <<"XOAUTH">>;
         Mechanism =:= <<"XOAUTH2">> ->
       auth(Mechanism, MechanismOptions, State);
     {Mechanism, _} ->
@@ -339,15 +336,24 @@ auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
     {ok, _, NewParser} ->
       finalize(State#{parser => NewParser});
     {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser2}};
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {stop, Reason, State}
   end;
-auth(<<"XOAUTH">>, _Options, _, State) ->
-  {noreply, State};
-auth(<<"XOAUTH2">>, _Options, _, State) ->
-  {noreply, State}.
+auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
+  Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
+  Msg = smtp_sasl:encode_xoauth2(Username, Password),
+  case exec(State, Msg, 235, Timeout) of
+    {ok, _, NewParser} ->
+      finalize(State#{parser => NewParser});
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]} = Reply, NewParser}} ->
+      io:format("XXX ~p~n", [Reply]),
+      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {error, Reason} ->
+      {stop, Reason, State}
+  end.
 
 -spec finalize(state()) -> et_gen_server:handle_continue_ret(state()).
 finalize(State) ->
