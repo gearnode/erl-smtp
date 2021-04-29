@@ -113,18 +113,6 @@ handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
 
--spec handle_info(term(), state()) -> et_gen_server:handle_info_ret(state()).
-handle_info({Event, _}, _State) when Event =:= tcp_closed;
-                                     Event =:= ssl_closed ->
-  ?LOG_INFO("connection closed"),
-  exit(normal);
-
-handle_info({tcp, _Socket, Data}, _State) ->
-  error({unexpected_data, Data});
-
-handle_info({ssl, _Socket, Data}, _State) ->
-  error({unexpected_data, Data});
-
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
