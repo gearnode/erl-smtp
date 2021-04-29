@@ -283,7 +283,7 @@ maybe_auth(State) ->
     {Mechanism, _} ->
       {stop, {unsupported_sasl_mechanism, client, Mechanism}, State};
     error ->
-      finalize(State)
+      {noreply, State}
   end.
 
 -spec auth(mechanism_name(), mechanism_parameters(), state()) ->
@@ -315,7 +315,7 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Msg = smtp_sasl:encode_plain(Username, Password),
   case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
-      finalize(State#{parser => NewParser});
+      {noreply, State#{parser => NewParser}};
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
@@ -330,7 +330,7 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
       State2 = State#{parser => NewParser},
       case exec(State2, Ms2, 235, Timeout) of
         {ok, _, NewParser2} ->
-          finalize(State2#{parser => NewParser2});
+          {nereply, State2#{parser => NewParser2}};
         {error,
          {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
           {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
@@ -348,7 +348,7 @@ auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
   Msg = smtp_sasl:encode_cram_md5(U, P, Challenge),
   case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
-      finalize(State#{parser => NewParser});
+      {noreply, State#{parser => NewParser}};
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
@@ -360,7 +360,7 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
   Msg = smtp_sasl:encode_xoauth2(Username, Password),
   case exec(State, Msg, 235, Timeout) of
     {ok, _, NewParser} ->
-      finalize(State#{parser => NewParser});
+      {noreply, State#{parser => NewParser}};
     {error, {unexpected_code, #{code := 334}, NewParser}} ->
       State2 = State#{parser => NewParser},
       Msg2 = smtp_proto:encode_empty_cmd(),
@@ -380,46 +380,18 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
       {stop, Reason, State}
   end.
 
--spec finalize(state()) -> et_gen_server:handle_continue_ret(state()).
-finalize(State) ->
-  case set_socket_active(State, true) of
-    ok ->
-      {noreply, State};
-    {error, Reason} ->
-      {stop, Reason}
-  end.
-
 -spec do_quit(state()) -> {ok, state()} | {error, term(), state()}.
 do_quit(State) ->
   Timeout = get_read_timeout_option(State, <<"QUIT">>, 60_000),
   Cmd = smtp_proto:encode_quit_cmd(),
-  case set_socket_active(State, false) of
-    ok ->
-      case exec(State, Cmd, 221, Timeout) of
-        {ok, _, NewParser} ->
-          {ok, State#{parser => NewParser}};
-        {error,
-         {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-          {error, {unexpected_code, Code, Line}, State#{parser => NewParser}};
-        {error, Reason} ->
-          {error, Reason, State}
-      end;
+  case exec(State, Cmd, 221, Timeout) of
+    {ok, _, NewParser} ->
+      {ok, State#{parser => NewParser}};
+    {error,
+     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+      {error, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {error, Reason, State}
-  end.
-
--spec set_socket_active(state(), boolean() | pos_integer()) ->
-        ok | {error, term()}.
-set_socket_active(#{transport := Transport, socket := Socket}, Active) ->
-  SetOpts = case Transport of
-              tcp -> fun inet:setopts/2;
-              tls -> fun ssl:setopts/2
-            end,
-  case SetOpts(Socket, [{active, Active}]) of
-    ok ->
-      ok;
-    {error, Reason} ->
-      {error, {connection_error, Reason}}
   end.
 
 -spec exec(state(), smtp_proto:command(), smtp_reply:code(), timeout()) ->
