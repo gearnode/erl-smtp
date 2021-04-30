@@ -382,16 +382,22 @@ do_quit(State) ->
       {error, Reason, State}
   end.
 
--spec exec(state(), smtp_proto:command(), smtp_reply:code(), timeout()) ->
+-spec exec(state(), smtp_proto:command(),
+           smtp_reply:code() | [smtp_reply:code()], timeout()) ->
         smtp_parser:parse_result() | {error, term()}.
-exec(#{transport := T, socket := S, parser := P}, Command, Code, Timeout) ->
+exec(State, Command, Code, Timeout) when is_integer(Code) ->
+  exec(State, Command, [Code], Timeout);
+exec(#{transport := T, socket := S, parser := P}, Command, Codes, Timeout) ->
   case send(T, S, Command) of
     ok ->
       case recv(T, S, Timeout, P) of
-        {ok, #{code := Code} = Reply, NewParser} ->
-          {ok, Reply, NewParser};
-        {ok, Reply, NewParser} ->
-          {error, {unexpected_code, Reply, NewParser}};
+        {ok, #{code := Code} = Reply, Parser} ->
+          case lists:member(Code, Codes) of
+            true ->
+              {ok, Reply, Parser};
+            false ->
+              {error, {unexpected_code, Reply, Parser}}
+          end;
         {error, Reason} ->
           {error, Reason}
       end;
