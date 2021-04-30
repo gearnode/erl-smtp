@@ -81,20 +81,20 @@ parse_reply_test() ->
   ?assertEqual({error, {invalid_line, invalid_syntax}},
                smtp_parser:parse(Parser, <<"999\r\n">>)),
 
-  ?assertEqual({error, {invalid_line, invalid_separator}},
+  ?assertEqual({error, {invalid_line, {invalid_separator, <<"_">>}}},
                smtp_parser:parse(Parser, <<"200_hello\r\n">>)),
 
-  ?assertEqual({error, {invalid_line,code_mismatch}},
+  ?assertEqual({error, {invalid_line, code_mismatch}},
                smtp_parser:parse(Parser, <<"220-mail.example.com ESMTP Postfix\r\n200 welcome!\r\n">>)),
 
-  ?assertEqual({error, {invalid_line, invalid_separator}},
+  ?assertEqual({error, {invalid_line, {invalid_separator, <<"_">>}}},
                smtp_parser:parse(Parser, <<"220-mail.example.com ESMTP Postfix\r\n220_welcome!\r\n">>)),
 
-  ?assertEqual({error, {invalid_line, invalid_code}},
+  ?assertEqual({error, {invalid_line, {invalid_code, <<"999">>}}},
                smtp_parser:parse(Parser, <<"999 hello\r\n">>)),
 
-  ?assertEqual({error, {invalid_line, invalid_separator}},
+  ?assertEqual({error, {invalid_line, {invalid_separator, <<"0">>}}},
                smtp_parser:parse(Parser, <<"2000 hello\r\n">>)),
 
-  ?assertEqual({error, {invalid_line, invalid_code}},
+  ?assertEqual({error, {invalid_line, {invalid_code, <<"AAA">>}}},
                smtp_parser:parse(Parser, <<"AAA hello\r\n">>)).

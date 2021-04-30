@@ -36,7 +36,11 @@
                       | {more, parser()}
                       | {error, parse_error_reason()}.
 
--type parse_error_reason() :: term().
+-type parse_error_reason() ::
+        {invalid_line, invalid_syntax}
+      | {invalid_line, {invalid_separator, binary()}}
+      | {invalid_line, {invalid_code, binary()}}
+      | {invalid_line, {invalid_code, code_mismatch}}.
 
 -spec new(msg_type()) -> parser().
 new(Type) ->
@@ -116,12 +120,12 @@ parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
         {smtp_reply:code(), smtp_reply:separator(), smtp_reply:line()} |
         {error, Reason}
           when Reason :: invalid_syntax
-                       | invalid_separator
-                       | invalid_code.
-parse_reply_line(<<Code0:3/binary, Separator0:1/binary, Rest/binary>>) ->
-  case parse_code(Code0) of
+                       | {invalid_separator, binary()}
+                       | {invalid_code, binary()}.
+parse_reply_line(<<Bin1:3/binary, Bin2:1/binary, Rest/binary>>) ->
+  case parse_code(Bin1) of
     {ok, Code} ->
-      case parse_separator(Separator0) of
+      case parse_separator(Bin2) of
         {error, Reason} ->
           {error, Reason};
         {ok, Separator} ->
@@ -134,25 +138,19 @@ parse_reply_line(_) ->
   {error, invalid_syntax}.
 
 -spec parse_separator(binary()) ->
-        {ok, smtp_reply:separator()} | {error, term()}.
+        {ok, smtp_reply:separator()} | {error, {invalid_separator, binary()}}.
 parse_separator(<<" ">>) ->
   {ok, sp};
 parse_separator(<<"-">>) ->
   {ok, minus};
-parse_separator(_) ->
-  {error, invalid_separator}.
+parse_separator(Bin) ->
+  {error, {invalid_separator, Bin}}.
 
 -spec parse_code(binary()) ->
-        {ok, smtp_reply:code()} | {error, term()}.
-parse_code(Value) ->
-  try
-    binary_to_integer(Value)
-  of
-    N when N > 0, N < 600 ->
-      {ok, N};
-    _ ->
-      {error, invalid_code}
-  catch
-    error:_ ->
-      {error, invalid_code}
-  end.
+        {ok, smtp_reply:code()} | {error, {invalid_code, binary()}}.
+parse_code(<<A:8, B:8, C:8>> = Bin) when A >= $2, A =< $5,
+                                         B >= $0, B =< $5,
+                                         C >= $0, C =< $9 ->
+  {ok, binary_to_integer(Bin)};
+parse_code(Bin) ->
+  {error, {invalid_code, Bin}}.
