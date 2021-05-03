@@ -94,7 +94,7 @@ encode_empty_cmd() ->
 
 -spec encode_mail_from_cmd(binary()) -> command().
 encode_mail_from_cmd(Email) ->
-  command(<<"MAIL FROM">>, <<$<, Email/binary, $>>>).
+  command(<<"MAIL FROM:">>, <<$<, Email/binary, $>>>).
 
 -spec command(binary()) -> command().
 command(Keyword) ->
