@@ -17,7 +17,8 @@
 -export([encode_ehlo_cmd/1, encode_helo_cmd/1, encode_help_cmd/0,
          encode_help_cmd/1, encode_noop_cmd/0, encode_quit_cmd/0,
          encode_rset_cmd/0, encode_vrfy_cmd/1, encode_expn_cmd/1,
-         encode_starttls_cmd/0, encode_auth_cmd/1, encode_empty_cmd/0]).
+         encode_starttls_cmd/0, encode_auth_cmd/1, encode_empty_cmd/0,
+         encode_mail_from_cmd/1]).
 
 -export([decode_ehlo_reply/1, decode_helo_reply/1, decode_auth_reply/1]).
 
@@ -90,6 +91,10 @@ encode_auth_cmd(Mechanism) ->
 -spec encode_empty_cmd() -> command().
 encode_empty_cmd() ->
   <<$\r, $\n>>.
+
+-spec encode_mail_from_cmd(binary()) -> command().
+encode_mail_from_cmd(Email) ->
+  command(<<"MAIL FROM">>, <<$<, Email/binary, $>>>).
 
 -spec command(binary()) -> command().
 command(Keyword) ->
