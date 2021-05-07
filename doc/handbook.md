@@ -52,3 +52,9 @@ The following client options are available:
 
 For TLS connections, the client uses both the list of TCP options and
 the list of TLS options.
+
+## Low-level API
+TODO
+
+## High-level API
+TODO
