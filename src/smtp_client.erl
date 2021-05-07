@@ -21,7 +21,7 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
--export([quit/1]).
+-export([quit/1, sendmail/4]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
@@ -70,6 +70,11 @@ start_link(Options) ->
 quit(Ref) ->
   gen_server:call(Ref, quit, infinity).
 
+-spec sendmail(et_gen_server:ref(), binary(), binary(), binary()) ->
+        ok | {error, term()}.
+sendmail(Ref, From, To, Data) ->
+  gen_server:call(Ref, {sendmail, From, To, Data}, infinity).
+
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   logger:update_process_metadata(#{domain => [smtp, client]}),
@@ -103,6 +108,9 @@ handle_call(quit, _, State) ->
     {error, Reason, State2} ->
       {stop, normal, {error, Reason}, State2}
   end;
+
+handle_call({sendmail, From, To, Data}, _, State) ->
+  sendmail_2(From, To, Data, State);
 
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
@@ -380,6 +388,50 @@ do_quit(State) ->
       {error, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
       {error, Reason, State}
+  end.
+
+-spec sendmail_2(binary(), binary(), binary(), state()) ->
+        term(). %% TODO: update returns spec
+sendmail_2(From, To, Data, State) ->
+  sendmail_2(mail_from, #{from => From, to => To, data => Data}, State).
+
+sendmail_2(mail_from, #{from := From} = Mail, State) ->
+  Timeout = get_read_timeout_option(State, <<"MAIL FROM">>, 300_000),
+  Cmd = smtp_proto:encode_mail_from_cmd(From),
+  case exec(State, Cmd, 250, Timeout) of
+    {ok, _, NewParser} ->
+      sendmail_2(recp_to, Mail, State#{parser => NewParser});
+    {error, Reason} ->
+      {stop, Reason, State}
+  end;
+
+sendmail_2(recp_to, #{to := To} = Mail, State) when is_binary(To) ->
+  sendmail_2(recp_to, Mail#{to => [To]}, State);
+sendmail_2(recp_to, #{to := []} = Mail, State) ->
+  sendmail_2(data, Mail, State);
+sendmail_2(recp_to, #{to := [To | Rest]} = Mail, State) ->
+  Timeout = get_read_timeout_option(State, <<"RCPT TO">>, 300_000),
+  Cmd = smtp_proto:encode_rcpt_to_cmd(To),
+  case exec(State, Cmd, 250, Timeout) of
+    {ok, _, Parser} ->
+      sendmail_2(recp_to, Mail#{to := Rest}, State#{parser => Parser});
+    {error, Reason} ->
+      {stop, Reason, State}
+  end;
+
+sendmail_2(data, #{data := Data}, State) ->
+  Timeout = get_read_timeout_option(State, <<"DATA">>, 120_000),
+  case exec(State, <<"DATA\r\n">>, 354, Timeout) of
+    {ok, _, Parser} ->
+      State2 = State#{parser => Parser},
+      case exec(State, Data, 250, Timeout) of
+        {ok, Reply, Parser2} ->
+          {reply, {ok, Reply}, State2#{parser => Parser2}};
+        {error, Reason} ->
+          {stop, Reason, State2}
+      end;
+    {error, Reason} ->
+      {stop, Reason, State}
   end.
 
 -spec exec(state(), smtp_proto:command(),
