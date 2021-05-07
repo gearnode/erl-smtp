@@ -43,10 +43,12 @@ The following client options are available:
       - `LOGIN`
       - `CRAM-MD5`
       - `XOAUTH2`
+- `connection_timeout`: the timeout of each read operations when reading
+  a response. It can be provided using the following from:
+  `#{CommandName => Timeout}` (e.g. `#{<<"HELO">> => 300_000}`).
 - `connection_timeout`: the timeout for the initial connection to the
   server.
 - `log_requests`: toggle request logging (default: `true`).
-
 
 For TLS connections, the client uses both the list of TCP options and
 the list of TLS options.
