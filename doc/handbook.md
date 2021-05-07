@@ -36,11 +36,12 @@ The following client options are available:
 - `tls_options`: a list of `ssl` client options to apply if the
   transport is either `tls`.
 - `authentication`: credentials to use for authentication. It can be
-  provided using one of the following forms:
-  - `{<<"PLAIN">>, #{username => User, password => Password}}`
-  - `{<<"LOGIN">>, #{username => User, password => Password}}`
-  - `{<<"CRAM-MD5">>, #{username => User, password => Password}}`
-  - `{<<"XOAUTH2">>, #{username => User, password => AccessToken}}`
+  provided using one of the following forms: `{Mechanism, #{username =>
+  User, password => Password}}` when valid mechanism values are:
+  - `PLAIN`
+  - `LOGIN`
+  - `CRAM-MD5`
+  - `XOAUTH2`
   Authentication is disabled when the option is not set.
 - `connection_timeout`: the timeout for the initial connection to the
   server.
