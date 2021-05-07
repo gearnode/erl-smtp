@@ -21,7 +21,7 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
--export([quit/1, sendmail/4]).
+-export([quit/1, noop/1, sendmail/4]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
@@ -75,6 +75,10 @@ quit(Ref) ->
 sendmail(Ref, From, To, Data) ->
   gen_server:call(Ref, {sendmail, From, To, Data}, infinity).
 
+-spec noop(et_gen_server:ref()) -> ok | {error, term()}.
+noop(Ref) ->
+  gen_server:call(Ref, noop, infinity).
+
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   logger:update_process_metadata(#{domain => [smtp, client]}),
@@ -107,6 +111,14 @@ handle_call(quit, _, State) ->
       {stop, normal, ok, State2};
     {error, Reason, State2} ->
       {stop, normal, {error, Reason}, State2}
+  end;
+
+handle_call(noop, _, State) ->
+  case noop_2(State) of
+    {ok, State2} ->
+      {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
   end;
 
 handle_call({sendmail, From, To, Data}, _, State) ->
@@ -390,7 +402,22 @@ do_quit(State) ->
       {error, Reason, State}
   end.
 
--spec sendmail_2(binary(), binary(), binary(), state()) ->
+-spec noop_2(state()) -> {ok, state()} | {error, term(), state()}.
+noop_2(State) ->
+  Timeout = get_read_timeout_option(State, <<"NOOP">>, 60_000),
+  Cmd = smtp_proto:encode_noop_cmd(),
+  case exec(State, Cmd, 250, Timeout) of
+    {ok, _, Parser} ->
+      {ok, State#{parser => Parser}};
+    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, Parser}} ->
+      {error,
+       {unexpected_code, Code, Line},
+       State#{parser => Parser}};
+    {error, Reason} ->
+      {error, Reason, State}
+  end.
+
+-spec sendmail_2(binary(), binary(), binary() | [binary()], state()) ->
         term(). %% TODO: update returns spec
 sendmail_2(From, To, Data, State) ->
   sendmail_2(mail_from, #{from => From, to => To, data => Data}, State).
