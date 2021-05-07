@@ -22,9 +22,8 @@ The following client options are available:
   `localhost`).
 - `port`: the port number to connect to (default: 80).
 - `transport`: the network transport, either `tcp` or `tls`.
-- `starttls`: the [starttls](https://tools.ietf.org/html/rfc3207) policy
-  (note that this option is ignored if `transport` option is set to
-  `tls`); valid values are:
+- `starttls`: the `starttls` policy (note that this option is ignored if
+  `transport` option is set to `tls`); valid values are:
   - `disabled`: do not try to upgrade to secure connection even if the
     server support the extension.
   - `required`: try to upgrade to secure connection and consider failure
@@ -42,6 +41,7 @@ The following client options are available:
   - `LOGIN`
   - `CRAM-MD5`
   - `XOAUTH2`
+
   Authentication is disabled when the option is not set.
 - `connection_timeout`: the timeout for the initial connection to the
   server.
