@@ -34,15 +34,15 @@ The following client options are available:
   transport is either `tcp` or `tls`.
 - `tls_options`: a list of `ssl` client options to apply if the
   transport is either `tls`.
-- `authentication`: credentials to use for authentication. It can be
-  provided using one of the following forms: `{Mechanism, #{username =>
-  User, password => Password}}` when valid mechanism values are:
-  - `PLAIN`
-  - `LOGIN`
-  - `CRAM-MD5`
-  - `XOAUTH2`
-
-  Authentication is disabled when the option is not set.
+- `authentication`: credentials to use for authentication (note that
+  authentication is disabled when the option is not set). It can be
+  provided using one of the following forms:
+  - `{Mechanism, #{username => User, password => Password}}` when valid
+  mechanism values are:
+      - `PLAIN`
+      - `LOGIN`
+      - `CRAM-MD5`
+      - `XOAUTH2`
 - `connection_timeout`: the timeout for the initial connection to the
   server.
 - `log_requests`: toggle request logging (default: `true`).
