@@ -20,7 +20,7 @@ A client is a single connection to an SMTP server.
 The following client options are available:
 - `host`: the hostname or IP address to connect to (default:
   `localhost`).
-- `port`: the port number to connect to (default: 80).
+- `port`: the port number to connect to (default: 25).
 - `transport`: the network transport, either `tcp` or `tls`.
 - `starttls`: the `starttls` policy (note that this option is ignored if
   `transport` option is set to `tls`); valid values are:
