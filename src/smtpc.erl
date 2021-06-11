@@ -12,7 +12,7 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
--module(smtp_client).
+-module(smtpc).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -106,7 +106,7 @@ handle_continue(Msg, State) ->
 -spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
         et_gen_server:handle_call_ret(state()).
 handle_call(quit, _, State) ->
-  case do_quit(State) of
+  case quit_2(State) of
     {ok, State2} ->
       {stop, normal, ok, State2};
     {error, Reason, State2} ->
@@ -388,16 +388,15 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
       {stop, Reason, State}
   end.
 
--spec do_quit(state()) -> {ok, state()} | {error, term(), state()}.
-do_quit(State) ->
+-spec quit_2(state()) -> {ok, state()} | {error, term(), state()}.
+quit_2(State) ->
   Timeout = get_read_timeout_option(State, <<"QUIT">>, 60_000),
   Cmd = smtp_proto:encode_quit_cmd(),
   case exec(State, Cmd, 221, Timeout) of
-    {ok, _, NewParser} ->
-      {ok, State#{parser => NewParser}};
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {error, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {ok, _, Parser} ->
+      {ok, State#{parser => Parser}};
+    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, Parser}} ->
+      {error, {unexpected_code, Code, Line}, State#{parser => Parser}};
     {error, Reason} ->
       {error, Reason, State}
   end.
@@ -409,9 +408,9 @@ noop_2(State) ->
   case exec(State, Cmd, 250, Timeout) of
     {ok, _, Parser} ->
       {ok, State#{parser => Parser}};
-    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, Parser}} ->
+    {error, {unexpected_code, #{code := Code, lines := Lines}, Parser}} ->
       {error,
-       {unexpected_code, Code, Line},
+       {unexpected_code, Code, list_to_binary(Lines)},
        State#{parser => Parser}};
     {error, Reason} ->
       {error, Reason, State}
