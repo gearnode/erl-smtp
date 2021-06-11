@@ -26,7 +26,7 @@
 
 -export_type([ehlo_reply/0, helo_reply/0, auth_reply/0]).
 
--type command() :: binary().
+-type command() :: iodata().
 
 -type ehlo_reply() :: #{domain := binary(), info := binary(),
                         extensions := [{binary(), term()}]}.

@@ -483,7 +483,7 @@ exec(#{transport := T, socket := S, parser := P}, Command, Codes, Timeout) ->
       {error, Reason}
   end.
 
--spec send(transport(), Socket, binary()) ->
+-spec send(transport(), Socket, iodata()) ->
         ok | {error, term()}
           when Socket :: inet:socket() | ssl:sslsocket().
 send(Transport, Socket, Packet) ->
