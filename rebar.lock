@@ -12,7 +12,7 @@
   0},
  {<<"imf">>,
   {git,"https://github.com/exograd/erl-imf.git",
-       {ref,"c8ed6c11359089987dd5bf81467c070aded1692e"}},
+       {ref,"052d1218ae09c5667c52c96131ddee45cff297f7"}},
   0},
  {<<"ksuid">>,
   {git,"https://github.com/exograd/erl-ksuid.git",
