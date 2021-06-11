@@ -424,7 +424,7 @@ noop_2(State) ->
   end.
 
 -spec sendmail_2(binary(), binary(), binary() | [binary()], state()) ->
-        term(). %% TODO: update returns spec
+        et_gen_server:handle_call_ret(state()).
 sendmail_2(From, To, Data, State) ->
   sendmail_2(mail_from, #{from => From, to => To, data => Data}, State).
 
