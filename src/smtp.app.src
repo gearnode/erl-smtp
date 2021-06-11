@@ -24,7 +24,8 @@
     uri,
     et,
     b64,
-    hex
+    hex,
+    imf
    ]},
   {env,[]},
   {modules, []},
