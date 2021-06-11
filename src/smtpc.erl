@@ -450,7 +450,9 @@ sendmail_2(data, #{data := Data}, State) ->
   case exec(State, <<"DATA\r\n">>, 354, Timeout) of
     {ok, _, Parser} ->
       State2 = State#{parser => Parser},
-      case exec(State, Data, 250, Timeout) of
+      EscapedBody =
+        re:replace(Data, "^\\.", "..", [global, multiline, {return, iodata}]),
+      case exec(State, [EscapedBody, "\r\n.\r\n"], 250, Timeout) of
         {ok, Reply, Parser2} ->
           {reply, {ok, Reply}, State2#{parser => Parser2}};
         {error, Reason} ->
