@@ -21,7 +21,7 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
--export([quit/1, noop/1, sendmail/4]).
+-export([quit/1, noop/1, sendmail/3, sendmail/4]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
@@ -69,6 +69,13 @@ start_link(Options) ->
 -spec quit(et_gen_server:ref()) -> ok | {error, term()}.
 quit(Ref) ->
   gen_server:call(Ref, quit, infinity).
+
+-spec sendmail(et_gen_server:ref(), binary(), imf:message()) ->
+        ok | {error, term()}.
+sendmail(Ref, From, Mail) ->
+  To = imf:recipient_addresses(Mail),
+  Data = imf:encode(Mail),
+  gen_server:call(Ref, {sendmail, From, To, Data}, infinity).
 
 -spec sendmail(et_gen_server:ref(), binary(), binary(), binary()) ->
         ok | {error, term()}.
