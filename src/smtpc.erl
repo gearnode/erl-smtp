@@ -129,7 +129,12 @@ handle_call(noop, _, State) ->
   end;
 
 handle_call({sendmail, From, To, Data}, _, State) ->
-  sendmail_2(From, To, Data, State);
+  case sendmail_2(From, To, Data, State) of
+    {ok, State2} ->
+      {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
 
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
@@ -424,7 +429,7 @@ noop_2(State) ->
   end.
 
 -spec sendmail_2(binary(), binary(), binary() | [binary()], state()) ->
-        et_gen_server:handle_call_ret(state()).
+        {ok, state()} | {error, term(), state()}.
 sendmail_2(From, To, Data, State) ->
   sendmail_2(mail_from, #{from => From, to => To, data => Data}, State).
 
@@ -435,7 +440,7 @@ sendmail_2(mail_from, #{from := From} = Mail, State) ->
     {ok, _, NewParser} ->
       sendmail_2(recp_to, Mail, State#{parser => NewParser});
     {error, Reason} ->
-      {stop, Reason, State}
+      {error, Reason, State}
   end;
 
 sendmail_2(recp_to, #{to := To} = Mail, State) when is_binary(To) ->
@@ -449,7 +454,7 @@ sendmail_2(recp_to, #{to := [To | Rest]} = Mail, State) ->
     {ok, _, Parser} ->
       sendmail_2(recp_to, Mail#{to := Rest}, State#{parser => Parser});
     {error, Reason} ->
-      {stop, Reason, State}
+      {error, Reason, State}
   end;
 
 sendmail_2(data, #{data := Data}, State) ->
@@ -460,13 +465,13 @@ sendmail_2(data, #{data := Data}, State) ->
       EscapedBody =
         re:replace(Data, "^\\.", "..", [global, multiline, {return, iodata}]),
       case exec(State, [EscapedBody, "\r\n.\r\n"], 250, Timeout) of
-        {ok, Reply, Parser2} ->
-          {reply, {ok, Reply}, State2#{parser => Parser2}};
+        {ok, _, Parser2} ->
+          {ok, State2#{parser => Parser2}};
         {error, Reason} ->
-          {stop, Reason, State2}
+          {error, Reason, State2}
       end;
     {error, Reason} ->
-      {stop, Reason, State}
+      {error, Reason, State}
   end.
 
 -spec exec(state(), smtp_proto:command(),
