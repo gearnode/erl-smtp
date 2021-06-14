@@ -33,7 +33,9 @@ encode_login(Username, Password) when is_binary(Username),
 encode_cram_md5(Username, Password, Challenge) when is_binary(Username),
                                                     is_binary(Password),
                                                     is_binary(Challenge) ->
-  Digest = hex:encode(crypto:mac(hmac, md5, Password, Challenge)),
+  Digest = string:lowercase(
+             binary:encode_hex(
+               crypto:mac(hmac, md5, Password, Challenge))),
   Enc = b64:encode(<<Username/binary, $\s, Digest/binary>>),
   <<Enc/binary, $\r, $\n>>.
 
