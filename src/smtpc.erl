@@ -278,6 +278,7 @@ starttls(State) ->
           {noreply, State#{parser => NewParser}}
       end;
     {error, Reason} ->
+      ?LOG_ERROR("connection failed: ~p", [Reason]),
       {stop, Reason, State}
   end.
 
