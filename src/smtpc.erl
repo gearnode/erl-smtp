@@ -228,6 +228,7 @@ ehlo(State) ->
     {error, {unexpected_code, _, NewParser}} ->
       helo(State#{parser => NewParser});
     {error, Reason} ->
+      ?LOG_ERROR("ehlo command failed: connection failed: ~p", [Reason]),
       {stop, Reason, State}
   end.
 
@@ -278,7 +279,7 @@ starttls(State) ->
           {noreply, State#{parser => NewParser}}
       end;
     {error, Reason} ->
-      ?LOG_ERROR("connection failed: ~p", [Reason]),
+      ?LOG_ERROR("starttls command failed: connection failed: ~p", [Reason]),
       {stop, Reason, State}
   end.
 
@@ -328,6 +329,7 @@ auth(Mechanism, MechanismOptions, State) ->
        {unsupported_sasl_mechanism, server, Mechanism},
        State#{parser => NewParser}};
     {error, Reason} ->
+      ?LOG_ERROR("auth command failed: connection failed: ~p", [Reason]),
       {stop, Reason, State}
   end.
 
@@ -343,6 +345,8 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
+      ?LOG_ERROR("plain auth command failed: connection failed: ~p",
+                 [Reason]),
       {stop, Reason, State}
   end;
 auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
@@ -358,6 +362,8 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
          {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
           {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
         {error, Reason} ->
+          ?LOG_ERROR("login auth command failed: connection failed: ~p",
+                     [Reason]),
           {stop, Reason, State2}
       end;
     {error,
@@ -376,6 +382,8 @@ auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
+      ?LOG_ERROR("cram-md5 auth command failed: connection failed: ~p",
+                 [Reason]),
       {stop, Reason, State}
   end;
 auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
@@ -394,12 +402,16 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
          {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
           {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
         {error, Reason} ->
+          ?LOG_ERROR("xoauth2 auth command failed: connection failed: ~p",
+                     [Reason]),
           {stop, Reason, State}
       end;
     {error,
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
+      ?LOG_ERROR("xoauth2 auth command failed: connection failed: ~p",
+                 [Reason]),
       {stop, Reason, State}
   end.
 
