@@ -244,6 +244,7 @@ helo(State) ->
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
+      ?LOG_ERROR("helo command failed: connection failed: ~p", [Reason]),
       {stop, Reason, State}
   end.
 
