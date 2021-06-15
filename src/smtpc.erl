@@ -270,6 +270,9 @@ starttls(State) ->
      {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
       case get_starttls_policy_option(State) of
         required ->
+          ?LOG_ERROR("ssl upgrade failed: starttls command failed: ~p",
+                     [Line], #{code => Code}),
+          %% TODO quit command
           {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
         best_effort ->
           {noreply, State#{parser => NewParser}}
@@ -285,6 +288,8 @@ ssl_handshake(#{options := Options, socket := Socket} = State) ->
     {ok, SSLSocket} ->
       ehlo(State#{transport => tls, socket => SSLSocket});
     {error, Reason} ->
+      ?LOG_ERROR("ssl upgrade failed: ssl handshake failed: ~p", [Reason]),
+      ok = quit_2(State),
       {stop, {connection_error, Reason}, State}
   end.
 
