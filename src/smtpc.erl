@@ -272,7 +272,7 @@ starttls(State) ->
         required ->
           ?LOG_ERROR("ssl upgrade failed: starttls command failed: ~p",
                      [Line], #{code => Code}),
-          %% TODO quit command
+          ok = quit_2(State),
           {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
         best_effort ->
           {noreply, State#{parser => NewParser}}
