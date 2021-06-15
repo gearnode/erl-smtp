@@ -66,7 +66,7 @@
 start_link(Options) ->
   gen_server:start_link(?MODULE, [Options], []).
 
--spec quit(et_gen_server:ref()) -> ok | {error, term()}.
+-spec quit(et_gen_server:ref()) -> ok.
 quit(Ref) ->
   gen_server:call(Ref, quit, infinity).
 
@@ -113,12 +113,8 @@ handle_continue(Msg, State) ->
 -spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
         et_gen_server:handle_call_ret(state()).
 handle_call(quit, _, State) ->
-  case quit_2(State) of
-    {ok, State2} ->
-      {stop, normal, ok, State2};
-    {error, Reason, State2} ->
-      {stop, normal, {error, Reason}, State2}
-  end;
+  quit_2(State),
+  {stop, normal, ok, State};
 
 handle_call(noop, _, State) ->
   case noop_2(State) of
@@ -172,6 +168,7 @@ connect(Options) ->
                end,
   case ConnectFun(HostAddress, Port, ConnectOptions, Timeout) of
     {ok, Socket} ->
+      ?LOG_DEBUG("connection succeeded to ~s:~b", [Host, Port]),
       State = #{options => Options,
                 transport => Transport,
                 socket => Socket,
@@ -400,18 +397,17 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
       {stop, Reason, State}
   end.
 
--spec quit_2(state()) -> {ok, state()} | {error, term(), state()}.
-quit_2(State) ->
+-spec quit_2(state()) -> ok.
+quit_2(#{transport := Transport, socket := Socket} = State) ->
   Timeout = get_read_timeout_option(State, <<"QUIT">>, 60_000),
   Cmd = smtp_proto:encode_quit_cmd(),
-  case exec(State, Cmd, 221, Timeout) of
-    {ok, _, Parser} ->
-      {ok, State#{parser => Parser}};
-    {error, {unexpected_code, #{code := Code, lines := [Line|_]}, Parser}} ->
-      {error, {unexpected_code, Code, Line}, State#{parser => Parser}};
-    {error, Reason} ->
-      {error, Reason, State}
-  end.
+  Close = case Transport of
+           tcp -> fun gen_tcp:close/1;
+           tls -> fun ssl:close/1
+         end,
+  _ = exec(State, Cmd, 221, Timeout),
+  _ = Close(Socket),
+  ok.
 
 -spec noop_2(state()) -> {ok, state()} | {error, term(), state()}.
 noop_2(State) ->
