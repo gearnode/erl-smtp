@@ -305,6 +305,9 @@ maybe_auth(State) ->
         Mechanism =:= <<"XOAUTH2">> ->
       auth(Mechanism, MechanismOptions, State);
     {Mechanism, _} ->
+      ?LOG_ERROR("authentication failed: client does not support sasl"
+                 " mechanism: ~p", [Mechanism]),
+      ok = quit_2(State),
       {stop, {unsupported_sasl_mechanism, client, Mechanism}, State};
     error ->
       {noreply, State}
@@ -322,9 +325,15 @@ auth(Mechanism, MechanismOptions, State) ->
           auth(Mechanism, MechanismOptions, Challenge,
                State#{parser => NewParser});
         {error, Reason} ->
+          ?LOG_ERROR("authentication failed: cannot decode challenge: ~p",
+                     [Reason]),
+          ok = quit_2(State),
           {stop, Reason, State#{parser => NewParser}}
       end;
     {error, {unexpected_code, _, NewParser}} ->
+      ?LOG_ERROR("authentication failed: server does not support sasl"
+                 " mechanism: ~p", [Mechanism]),
+      ok = quit_2(State),
       {stop,
        {unsupported_sasl_mechanism, server, Mechanism},
        State#{parser => NewParser}};
