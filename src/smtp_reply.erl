@@ -24,6 +24,5 @@
 
 -type separator() :: minus | sp.
 
--type reply() :: #{code := code(),
-                   lines := lines()}.
+-type reply() :: {code(), lines()}.
 

@@ -74,9 +74,9 @@ parse(Parser = #{data := Data, msg_type := reply, state := reply_line}) ->
       {more, Parser}
   end;
 
-parse(Parser = #{state := final, msg := Msg0}) ->
+parse(Parser = #{state := final, msg := {Code, Lines}}) ->
   Parser2 = maps:remove(msg, Parser),
-  Msg = Msg0#{lines => lists:reverse(maps:get(lines, Msg0))},
+  Msg = {Code, lists:reverse(Lines)},
   {ok, Msg, Parser2#{state => initial}}.
 
 -spec parse_first_line(parser(), binary(), binary()) ->
@@ -84,8 +84,7 @@ parse(Parser = #{state := final, msg := Msg0}) ->
 parse_first_line(Parser, Line, Rest) ->
   case parse_reply_line(Line) of
     {Code, Sep, NewLine} ->
-      Msg = #{code => Code, lines => [NewLine]},
-      Parser2 = Parser#{data => Rest, msg => Msg},
+      Parser2 = Parser#{data => Rest, msg => {Code, [NewLine]}},
 
       case Sep of
         sp -> parse(Parser2#{state => final});
@@ -97,14 +96,10 @@ parse_first_line(Parser, Line, Rest) ->
 
 -spec parse_continuation_line(parser(), binary(), binary()) ->
         parse_result().
-parse_continuation_line(Parser = #{msg := Msg}, Line, Rest) ->
-  Code = maps:get(code, Msg),
-  Lines = maps:get(lines, Msg),
-
+parse_continuation_line(Parser = #{msg := {Code, Lines}}, Line, Rest) ->
   case parse_reply_line(Line) of
     {Code, Sep, NewLine} ->
-      Msg2 = Msg#{lines => [NewLine | Lines]},
-      Parser2 = Parser#{data => Rest, msg => Msg2},
+      Parser2 = Parser#{data => Rest, msg => {Code, [NewLine | Lines]}},
 
       case Sep of
         sp -> parse(Parser2#{state => final});
