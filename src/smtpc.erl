@@ -173,8 +173,7 @@ connect(Options) ->
                 parser => smtp_parser:new(reply)},
       {ok, State, {continue, ehlo}};
     {error, Reason} ->
-      ?LOG_ERROR("connection failed: ~p", [Reason]),
-      {stop, normal}
+      exit(Reason)
   end.
 
 -spec options_connect_options(options()) -> [Options] when
@@ -203,47 +202,43 @@ host_address(Host) ->
   end.
 
 -spec greeting_message(state()) -> et_gen_server:handle_continue_ret(state()).
-greeting_message(#{transport := T, socket := S, parser := P} = State) ->
+greeting_message(State) ->
   Timeout = get_read_timeout_option(State, <<"INITIAL">>, 60_000),
-  case recv(T, S, Timeout, P) of
-    {ok, #{code := 220}, NewParser} ->
-      ehlo(State#{parser => NewParser});
-    {ok, #{code := Code, lines := [Line|_]}, NewParser} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+  case recv(State, Timeout) of
+    {ok, {220, _}, State2} ->
+      ehlo(State2);
+    {ok, Reply, _} ->
+      exit({protocol_error, <<"INITIAL">>, Reply});
     {error, Reason} ->
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec ehlo(state()) -> et_gen_server:handle_continue_ret(state()).
 ehlo(State) ->
   Cmd = smtp_proto:encode_ehlo_cmd(smtp:fqdn()),
   Timeout = get_read_timeout_option(State, <<"EHLO">>, 60_000),
-  case exec(State, Cmd, 250, Timeout) of
-    {ok, #{lines := Lines}, NewParser} ->
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, Lines}, State2} ->
       Reply = smtp_proto:decode_ehlo_reply(Lines),
-      NewState = State#{server_info => Reply, parser => NewParser},
-      maybe_starttls(NewState);
-    {error, {unexpected_code, _, NewParser}} ->
-      helo(State#{parser => NewParser});
+      maybe_starttls(State2#{server_info => Reply});
+    {ok, _, State2} ->
+      helo(State2);
     {error, Reason} ->
-      ?LOG_ERROR("ehlo command failed: connection failed: ~p", [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec helo(state()) -> et_gen_server:handle_continue_ret(state()).
 helo(State) ->
   Cmd = smtp_proto:encode_helo_cmd(smtp:fqdn()),
   Timeout = get_read_timeout_option(State, <<"HELO">>, 60_000),
-  case exec(State, Cmd, 250, Timeout) of
-    {ok, #{lines := Lines}, NewParser} ->
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, Lines}, State2} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
-      maybe_starttls(State#{parser => NewParser, server_info => Reply});
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+      maybe_starttls(State2#{server_info => Reply});
+    {ok, Reply, _} ->
+      exit({protocol_error, Cmd, Reply});
     {error, Reason} ->
-      ?LOG_ERROR("helo command failed: connection failed: ~p", [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec maybe_starttls(state()) -> et_gen_server:handle_continue_ret(state()).
@@ -263,23 +258,20 @@ maybe_starttls(State) ->
 starttls(State) ->
   Cmd = smtp_proto:encode_starttls_cmd(),
   Timeout = get_read_timeout_option(State, <<"STARTTLS">>, 60_000),
-  case exec(State, Cmd, 220, Timeout) of
-    {ok, _, NewParser} ->
-      ssl_handshake(State#{parser => NewParser});
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
+  case exec(State, Cmd, Timeout) of
+    {ok, {220, _}, State2} ->
+      ssl_handshake(State2);
+    {ok, Reply, State2} ->
       case get_starttls_policy_option(State) of
         required ->
-          ?LOG_ERROR("ssl upgrade failed: starttls command failed: ~p",
-                     [Line], #{code => Code}),
-          ok = quit_2(State),
-          {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+          ok = quit_2(State2),
+          exit({protocol_error, Cmd, Reply});
         best_effort ->
-          {noreply, State#{parser => NewParser}}
+          %% TODO perform auth?
+          {noreply, State2}
       end;
     {error, Reason} ->
-      ?LOG_ERROR("starttls command failed: connection failed: ~p", [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec ssl_handshake(state()) -> et_gen_server:handle_continue_ret(state()).
@@ -304,10 +296,8 @@ maybe_auth(State) ->
         Mechanism =:= <<"XOAUTH2">> ->
       auth(Mechanism, MechanismOptions, State);
     {Mechanism, _} ->
-      ?LOG_ERROR("authentication failed: client does not support sasl"
-                 " mechanism: ~p", [Mechanism]),
       ok = quit_2(State),
-      {stop, {unsupported_sasl_mechanism, client, Mechanism}, State};
+      exit({unsupported_sasl_mechanism, client, Mechanism});
     error ->
       {noreply, State}
   end.
@@ -317,28 +307,20 @@ maybe_auth(State) ->
 auth(Mechanism, MechanismOptions, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Cmd = smtp_proto:encode_auth_cmd(Mechanism),
-  case exec(State, Cmd, 334, Timeout) of
-    {ok, #{lines := Lines}, NewParser} ->
+  case exec(State, Cmd, Timeout) of
+    {ok, {334, Lines}, State2} ->
       case smtp_proto:decode_auth_reply(Lines) of
         {ok, #{challenge := Challenge}} ->
-          auth(Mechanism, MechanismOptions, Challenge,
-               State#{parser => NewParser});
+          auth(Mechanism, MechanismOptions, Challenge, State2);
         {error, Reason} ->
-          ?LOG_ERROR("authentication failed: cannot decode challenge: ~p",
-                     [Reason]),
           ok = quit_2(State),
-          {stop, Reason, State#{parser => NewParser}}
+          exit(Reason)
       end;
-    {error, {unexpected_code, _, NewParser}} ->
-      ?LOG_ERROR("authentication failed: server does not support sasl"
-                 " mechanism: ~p", [Mechanism]),
+    {ok, Reply, _} ->
       ok = quit_2(State),
-      {stop,
-       {unsupported_sasl_mechanism, server, Mechanism},
-       State#{parser => NewParser}};
+      exit({protocol_error, Cmd, Reply});
     {error, Reason} ->
-      ?LOG_ERROR("auth command failed: connection failed: ~p", [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec auth(mechanism_name(), mechanism_parameters(), binary(), state()) ->
@@ -346,81 +328,59 @@ auth(Mechanism, MechanismOptions, State) ->
 auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Msg = smtp_sasl:encode_plain(Username, Password),
-  case exec(State, Msg, 235, Timeout) of
-    {ok, _, NewParser} ->
-      {noreply, State#{parser => NewParser}};
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+  case exec(State, Msg, Timeout) of
+    {ok, {235, _}, State2} ->
+      {noreply, State2};
+    {ok, Reply, _} ->
+      exit({protocol_error, <<"AUTH PLAIN">>, Reply});
     {error, Reason} ->
-      ?LOG_ERROR("plain auth command failed: connection failed: ~p",
-                 [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end;
 auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   {Msg1, Ms2} = smtp_sasl:encode_login(Username, Password),
-  case exec(State, Msg1, 334, Timeout) of
-    {ok, _, NewParser} ->
-      State2 = State#{parser => NewParser},
-      case exec(State2, Ms2, 235, Timeout) of
-        {ok, _, NewParser2} ->
-          {nereply, State2#{parser => NewParser2}};
-        {error,
-         {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
-          {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
+  case exec(State, Msg1, Timeout) of
+    {ok, {334, _}, State2} ->
+      case exec(State2, Ms2, Timeout) of
+        {ok, {235, _}, State3} ->
+          {noreply, State3};
+        {ok, Reply, _} ->
+          exit({protocol_error, <<"AUTH LOGIN">>, Reply});
         {error, Reason} ->
-          ?LOG_ERROR("login auth command failed: connection failed: ~p",
-                     [Reason]),
-          {stop, Reason, State2}
+          exit(Reason)
       end;
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+    {ok, Reply, _} ->
+      exit({protocol_error, <<"AUTH LOGIN">>, Reply});
     {error, Reason} ->
-      {stop, Reason, State}
+      exit(Reason)
   end;
 auth(<<"CRAM-MD5">>, #{username := U, password := P}, Challenge, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Msg = smtp_sasl:encode_cram_md5(U, P, Challenge),
-  case exec(State, Msg, 235, Timeout) of
-    {ok, _, NewParser} ->
-      {noreply, State#{parser => NewParser}};
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
+  case exec(State, Msg, Timeout) of
+    {ok, {235, _}, State2} ->
+      {noreply, State2};
+    {ok, Reply, _} ->
+      exit({protocol_error, <<"AUTH CRAM-MD5">>, Reply});
     {error, Reason} ->
-      ?LOG_ERROR("cram-md5 auth command failed: connection failed: ~p",
-                 [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end;
 auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Msg = smtp_sasl:encode_xoauth2(Username, Password),
-  case exec(State, Msg, 235, Timeout) of
-    {ok, _, NewParser} ->
-      {noreply, State#{parser => NewParser}};
-    {error, {unexpected_code, #{code := 334}, NewParser}} ->
-      State2 = State#{parser => NewParser},
+  case exec(State, Msg, Timeout) of
+    {ok, {235, _}, State2} ->
+      {noreply, State2};
+    {ok, _, State2} ->
       Msg2 = smtp_proto:encode_empty_cmd(),
-      case exec(State2, Msg2, 535, Timeout) of
-        {ok, #{code := Code, lines := [Line|_]}, NewParser2} ->
-          {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
-        {error,
-         {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser2}} ->
-          {stop, {unexpected_code, Code, Line}, State2#{parser => NewParser2}};
+      case exec(State2, Msg2, Timeout) of
+        {ok, Reply, _} ->
+          exit({protocol_error, <<"AUTH XOAUTH2">>, Reply});
         {error, Reason} ->
-          ?LOG_ERROR("xoauth2 auth command failed: connection failed: ~p",
-                     [Reason]),
-          {stop, Reason, State}
+          exit(Reason)
       end;
-    {error,
-     {unexpected_code, #{code := Code, lines := [Line|_]}, NewParser}} ->
-      {stop, {unexpected_code, Code, Line}, State#{parser => NewParser}};
     {error, Reason} ->
-      ?LOG_ERROR("xoauth2 auth command failed: connection failed: ~p",
-                 [Reason]),
-      {stop, Reason, State}
+      exit(Reason)
   end.
 
 -spec quit_2(state()) -> ok.
@@ -431,7 +391,7 @@ quit_2(#{transport := Transport, socket := Socket} = State) ->
            tcp -> fun gen_tcp:close/1;
            tls -> fun ssl:close/1
          end,
-  _ = exec(State, Cmd, 221, Timeout),
+  _ = exec(State, Cmd, Timeout),
   _ = Close(Socket),
   ok.
 
@@ -496,22 +456,14 @@ sendmail_2(data, #{data := Data}, State) ->
       {error, Reason, State}
   end.
 
--spec exec(state(), smtp_proto:command(),
-           smtp_reply:code() | [smtp_reply:code()], timeout()) ->
-        smtp_parser:parse_result() | {error, term()}.
-exec(State, Command, Code, Timeout) when is_integer(Code) ->
-  exec(State, Command, [Code], Timeout);
-exec(#{transport := T, socket := S, parser := P}, Command, Codes, Timeout) ->
-  case send(T, S, Command) of
+-spec exec(state(), smtp_proto:command(), timeout()) ->
+        {ok, smtp_reply:reply(), state()} | {error, term()}.
+exec(State, Command, Timeout) ->
+  case send(State, Command) of
     ok ->
-      case recv(T, S, Timeout, P) of
-        {ok, #{code := Code} = Reply, Parser} ->
-          case lists:member(Code, Codes) of
-            true ->
-              {ok, Reply, Parser};
-            false ->
-              {error, {unexpected_code, Reply, Parser}}
-          end;
+      case recv(State, Timeout) of
+        {ok, Reply, State2} ->
+          {ok, Reply, State2};
         {error, Reason} ->
           {error, Reason}
       end;
@@ -519,10 +471,8 @@ exec(#{transport := T, socket := S, parser := P}, Command, Codes, Timeout) ->
       {error, Reason}
   end.
 
--spec send(transport(), Socket, iodata()) ->
-        ok | {error, term()}
-          when Socket :: inet:socket() | ssl:sslsocket().
-send(Transport, Socket, Packet) ->
+-spec send(state(), iodata()) -> ok | {error, term()}.
+send(#{transport := Transport, socket := Socket}, Packet) ->
   Send = case Transport of
            tcp -> fun gen_tcp:send/2;
            tls -> fun ssl:send/2
@@ -534,10 +484,10 @@ send(Transport, Socket, Packet) ->
       {error, {connection_error, Reason}}
   end.
 
--spec recv(transport(), Socket, timeout(), smtp_parser:parser()) ->
-        smtp_parser:parse_result() | {error, term()}
-          when Socket :: inet:socket() | ssl:sslsocket().
-recv(Transport, Socket, Timeout, Parser) ->
+-spec recv(state(), timeout()) -> {ok, smtp_reply:reply(), state()}
+          | {error, term()}.
+recv(#{transport := Transport, socket := Socket, parser := Parser} = State,
+     Timeout) ->
   Recv = case Transport of
            tcp -> fun gen_tcp:recv/3;
            tls -> fun ssl:recv/3
@@ -546,9 +496,9 @@ recv(Transport, Socket, Timeout, Parser) ->
     {ok, Packet} ->
       case smtp_parser:parse(Parser, Packet) of
         {ok, Reply, NewParser} ->
-          {ok, Reply, NewParser};
+          {ok, Reply, State#{parser => NewParser}};
         {more, NewParser} ->
-          recv(Transport, Socket, Timeout, NewParser);
+          recv(State#{parser => NewParser}, Timeout);
         {error, Reason} ->
           {error, {parse_error, Reason}}
         end;
