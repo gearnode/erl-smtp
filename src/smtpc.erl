@@ -375,8 +375,8 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
     {ok, _, State2} ->
       Msg2 = smtp_proto:encode_empty_cmd(),
       case exec(State2, Msg2, Timeout) of
-        {ok, Reply, _} ->
-          ok = quit_2(State),
+        {ok, Reply, State3} ->
+          ok = quit_2(State3),
           exit({protocol_error, <<"AUTH XOAUTH2">>, Reply});
         {error, Reason} ->
           exit(Reason)
