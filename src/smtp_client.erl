@@ -486,9 +486,8 @@ recp_to_2(EmailAddress, State) ->
   Timeout = get_read_timeout_option(State, <<"RCPT TO">>, 300_000),
   Cmd = smtp_proto:encode_rcpt_to_cmd(EmailAddress),
   case exec(State, Cmd, Timeout) of
-    {ok, {250, _}, State2} ->
+    {ok, {Code, _}, State2} when Code =:= 250; Code =:= 251 ->
       {ok, State2};
-    %% TODO: manage forwarding for address correction or updating (code 251).
     {ok, Reply, State2} ->
       {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
