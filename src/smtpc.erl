@@ -235,7 +235,8 @@ helo(State) ->
     {ok, {250, Lines}, State2} ->
       Reply = smtp_proto:decode_helo_reply(Lines),
       maybe_starttls(State2#{server_info => Reply});
-    {ok, Reply, _} ->
+    {ok, Reply, State2} ->
+      ok = quit_2(State2),
       exit({protocol_error, Cmd, Reply});
     {error, Reason} ->
       exit(Reason)
@@ -267,7 +268,6 @@ starttls(State) ->
           ok = quit_2(State2),
           exit({protocol_error, Cmd, Reply});
         best_effort ->
-          %% TODO perform auth?
           {noreply, State2}
       end;
     {error, Reason} ->
@@ -281,7 +281,6 @@ ssl_handshake(#{options := Options, socket := Socket} = State) ->
     {ok, SSLSocket} ->
       ehlo(State#{transport => tls, socket => SSLSocket});
     {error, Reason} ->
-      ?LOG_ERROR("ssl upgrade failed: ssl handshake failed: ~p", [Reason]),
       ok = quit_2(State),
       {stop, {connection_error, Reason}, State}
   end.
@@ -332,6 +331,7 @@ auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
     {ok, {235, _}, State2} ->
       {noreply, State2};
     {ok, Reply, _} ->
+      ok = quit_2(State),
       exit({protocol_error, <<"AUTH PLAIN">>, Reply});
     {error, Reason} ->
       exit(Reason)
@@ -345,6 +345,7 @@ auth(<<"LOGIN">>, #{username := Username, password := Password}, _, State) ->
         {ok, {235, _}, State3} ->
           {noreply, State3};
         {ok, Reply, _} ->
+          ok = quit_2(State),
           exit({protocol_error, <<"AUTH LOGIN">>, Reply});
         {error, Reason} ->
           exit(Reason)
@@ -375,6 +376,7 @@ auth(<<"XOAUTH2">>, #{username := Username, password := Password}, _, State) ->
       Msg2 = smtp_proto:encode_empty_cmd(),
       case exec(State2, Msg2, Timeout) of
         {ok, Reply, _} ->
+          ok = quit_2(State),
           exit({protocol_error, <<"AUTH XOAUTH2">>, Reply});
         {error, Reason} ->
           exit(Reason)
