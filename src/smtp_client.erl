@@ -25,7 +25,8 @@
          noop/1,
          mail_from/2, recp_to/2, data/2,
          rset/1,
-         help/1, help/2]).
+         help/1, help/2,
+         vrfy/2]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
@@ -101,6 +102,11 @@ help(Ref) ->
 -spec help(et_gen_server:ref(), binary()) -> {ok, iodata()} | {error, term()}.
 help(Ref, HelpArgument) ->
   gen_server:call(Ref, {help, HelpArgument}, infinity).
+
+-spec vrfy(et_gen_server:ref(), binary()) ->
+        {ok, iodata() | atom()} | {error, term()}.
+vrfy(Ref, User) ->
+  gen_server:call(Ref, {vrfy, User}, infinity).
 
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
@@ -182,6 +188,14 @@ handle_call({help, HelpArgument}, _, State) ->
   case help_2(HelpArgument, State) of
     {ok, HelpMessage, State2} ->
       {reply, {ok, HelpMessage}, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call({vrfy, User}, _, State) ->
+  case vrfy_2(User, State) of
+    {ok, Information, State2} ->
+      {reply, {ok, Information}, State2};
     {error, Reason, State2} ->
       {reply, {error, Reason}, State2}
   end;
@@ -550,6 +564,24 @@ help_2(HelpArgument, State) ->
   case exec(State, Cmd, Timeout) of
     {ok, {Code, Lines}, State2} when Code =:= 211; Code =:= 214 ->
       {ok, Lines, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
+    {error, Reason} ->
+      exit(Reason)
+  end.
+
+-spec vrfy_2(binary(), state()) ->
+        {ok, iodata(), state()} | {error, term(), state()}.
+vrfy_2(User, State) ->
+  Timeout = get_read_timeout_option(State, <<"VRFY">>, 60_000),
+  Cmd = smtp_proto:encode_vrfy_cmd(User),
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, Lines}, State2} ->
+      {ok, Lines, State2};
+    {ok, {251, _}, State2} ->
+      {ok, server_forward, State2};
+    {ok, {252, _}, State2} ->
+      {ok, cannot_verify, State2};
     {ok, Reply, State2} ->
       {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
