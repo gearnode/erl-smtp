@@ -12,7 +12,7 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
--module(smtpc).
+-module(smtp_client).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -21,7 +21,11 @@
 -export([start_link/1, init/1, terminate/2,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
--export([quit/1, noop/1, sendmail/3, sendmail/4]).
+-export([quit/1,
+         noop/1,
+         mail_from/2, recp_to/2, data/2,
+         rset/1,
+         help/1, help/2]).
 
 -export_type([options/0, tcp_option/0, tls_option/0, transport/0,
               command_timeout/0, starttls_policy/0,
@@ -70,21 +74,33 @@ start_link(Options) ->
 quit(Ref) ->
   gen_server:call(Ref, quit, infinity).
 
--spec sendmail(et_gen_server:ref(), binary(), imf:message()) ->
-        ok | {error, term()}.
-sendmail(Ref, From, Mail) ->
-  To = imf:recipient_addresses(Mail),
-  Data = imf:encode(Mail),
-  gen_server:call(Ref, {sendmail, From, To, Data}, infinity).
-
--spec sendmail(et_gen_server:ref(), binary(), binary(), binary()) ->
-        ok | {error, term()}.
-sendmail(Ref, From, To, Data) ->
-  gen_server:call(Ref, {sendmail, From, To, Data}, infinity).
-
 -spec noop(et_gen_server:ref()) -> ok | {error, term()}.
 noop(Ref) ->
   gen_server:call(Ref, noop, infinity).
+
+-spec mail_from(et_gen_server:ref(), binary()) -> ok | {error, term()}.
+mail_from(Ref, EmailAddress) ->
+  gen_server:call(Ref, {mail_from, EmailAddress}, infinity).
+
+-spec recp_to(et_gen_server:ref(), binary()) -> ok | {error, term()}.
+recp_to(Ref, EmailAddress) ->
+  gen_server:call(Ref, {recp_to, EmailAddress}, infinity).
+
+-spec data(et_gen_server:ref(), iodata()) -> ok | {error, term()}.
+data(Ref, Data) ->
+  gen_server:call(Ref, {data, Data}, infinity).
+
+-spec rset(et_gen_server:ref()) -> ok | {error, term()}.
+rset(Ref) ->
+  gen_server:call(Ref, rset, infinity).
+
+-spec help(et_gen_server:ref()) -> {ok, iodata()} | {error, term()}.
+help(Ref) ->
+  gen_server:call(Ref, help, infinity).
+
+-spec help(et_gen_server:ref(), binary()) -> {ok, iodata()} | {error, term()}.
+help(Ref, HelpArgument) ->
+  gen_server:call(Ref, {help, HelpArgument}, infinity).
 
 -spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
@@ -122,10 +138,50 @@ handle_call(noop, _, State) ->
       {reply, {error, Reason}, State2}
   end;
 
-handle_call({sendmail, From, To, Data}, _, State) ->
-  case sendmail_2(From, To, Data, State) of
+handle_call({mail_from, EmailAddress}, _, State) ->
+  case mail_from_2(EmailAddress, State) of
     {ok, State2} ->
       {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call({recp_to, EmailAddress}, _, State) ->
+  case recp_to_2(EmailAddress, State) of
+    {ok, State2} ->
+      {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call({data, Data}, _, State) ->
+  case data_2(Data, State) of
+    {ok, State2} ->
+      {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call(rset, _, State) ->
+  case rset_2(State) of
+    {ok, State2} ->
+      {reply, ok, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call(help, _, State) ->
+  case help_2(State) of
+    {ok, HelpMessage, State2} ->
+      {reply, {ok, HelpMessage}, State2};
+    {error, Reason, State2} ->
+      {reply, {error, Reason}, State2}
+  end;
+
+handle_call({help, HelpArgument}, _, State) ->
+  case help_2(HelpArgument, State) of
+    {ok, HelpMessage, State2} ->
+      {reply, {ok, HelpMessage}, State2};
     {error, Reason, State2} ->
       {reply, {error, Reason}, State2}
   end;
@@ -401,61 +457,104 @@ quit_2(#{transport := Transport, socket := Socket} = State) ->
 noop_2(State) ->
   Timeout = get_read_timeout_option(State, <<"NOOP">>, 60_000),
   Cmd = smtp_proto:encode_noop_cmd(),
-  case exec(State, Cmd, 250, Timeout) of
-    {ok, _, Parser} ->
-      {ok, State#{parser => Parser}};
-    {error, {unexpected_code, #{code := Code, lines := Lines}, Parser}} ->
-      {error,
-       {unexpected_code, Code, list_to_binary(Lines)},
-       State#{parser => Parser}};
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, _}, State2} ->
+      {ok, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
-      {error, Reason, State}
+      exit(Reason)
   end.
 
--spec sendmail_2(binary(), binary(), binary() | [binary()], state()) ->
+-spec mail_from_2(binary(), state()) ->
         {ok, state()} | {error, term(), state()}.
-sendmail_2(From, To, Data, State) ->
-  sendmail_2(mail_from, #{from => From, to => To, data => Data}, State).
-
-sendmail_2(mail_from, #{from := From} = Mail, State) ->
-  Timeout = get_read_timeout_option(State, <<"MAIL FROM">>, 300_000),
-  Cmd = smtp_proto:encode_mail_from_cmd(From),
-  case exec(State, Cmd, 250, Timeout) of
-    {ok, _, NewParser} ->
-      sendmail_2(recp_to, Mail, State#{parser => NewParser});
+mail_from_2(EmailAddress, State) ->
+  Timeout = get_read_timeout_option(State, <<"MAIL FROM">>, 60_000),
+  Cmd = smtp_proto:encode_mail_from_cmd(EmailAddress),
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, _}, State2} ->
+      {ok, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
-      {error, Reason, State}
-  end;
+      exit(Reason)
+  end.
 
-sendmail_2(recp_to, #{to := To} = Mail, State) when is_binary(To) ->
-  sendmail_2(recp_to, Mail#{to => [To]}, State);
-sendmail_2(recp_to, #{to := []} = Mail, State) ->
-  sendmail_2(data, Mail, State);
-sendmail_2(recp_to, #{to := [To | Rest]} = Mail, State) ->
+-spec recp_to_2(binary(), state()) ->
+        {ok, state()} | {error, term(), state()}.
+recp_to_2(EmailAddress, State) ->
   Timeout = get_read_timeout_option(State, <<"RCPT TO">>, 300_000),
-  Cmd = smtp_proto:encode_rcpt_to_cmd(To),
-  case exec(State, Cmd, 250, Timeout) of
-    {ok, _, Parser} ->
-      sendmail_2(recp_to, Mail#{to := Rest}, State#{parser => Parser});
+  Cmd = smtp_proto:encode_rcpt_to_cmd(EmailAddress),
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, _}, State2} ->
+      {ok, State2};
+    %% TODO: manage forwarding for address correction or updating (code 251).
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
-      {error, Reason, State}
-  end;
+      exit(Reason)
+  end.
 
-sendmail_2(data, #{data := Data}, State) ->
+-spec data_2(iodata(), state()) ->
+        {ok, state()} | {error, term(), state()}.
+data_2(Data, State) ->
   Timeout = get_read_timeout_option(State, <<"DATA">>, 120_000),
-  case exec(State, <<"DATA\r\n">>, 354, Timeout) of
-    {ok, _, Parser} ->
-      State2 = State#{parser => Parser},
+  case exec(State, <<"DATA\r\n">>, Timeout) of
+    {ok, {354, _}, State2} ->
       EscapedBody =
         re:replace(Data, "^\\.", "..", [global, multiline, {return, iodata}]),
-      case exec(State, [EscapedBody, "\r\n.\r\n"], 250, Timeout) of
-        {ok, _, Parser2} ->
-          {ok, State2#{parser => Parser2}};
+      case exec(State2, [EscapedBody, "\r\n.\r\n"], Timeout) of
+        {ok, {250, _}, State3} ->
+          {ok, State3};
+        {ok, Reply, State3} ->
+          {error, {protocol_error, <<"DATA\r\n">>, Reply}, State3};
         {error, Reason} ->
-          {error, Reason, State2}
+          exit(Reason)
       end;
+    {ok, Reply, State2} ->
+      {error, {protocol_error, <<"DATA\r\n">>, Reply}, State2};
     {error, Reason} ->
-      {error, Reason, State}
+      exit(Reason)
+  end.
+
+-spec rset_2(state()) -> {ok, state()} | {error, term(), state()}.
+rset_2(State) ->
+  Timeout = get_read_timeout_option(State, <<"NOOP">>, 60_000),
+  Cmd = smtp_proto:encode_rset_cmd(),
+  case exec(State, Cmd, Timeout) of
+    {ok, {250, _}, State2} ->
+      {ok, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
+    {error, Reason} ->
+      exit(Reason)
+  end.
+
+-spec help_2(state()) -> {ok, iodata(), state()} | {error, term(), state()}.
+help_2(State) ->
+  Timeout = get_read_timeout_option(State, <<"HELP">>, 60_000),
+  Cmd = smtp_proto:encode_help_cmd(),
+  case exec(State, Cmd, Timeout) of
+    {ok, {Code, Lines}, State2} when Code =:= 211; Code =:= 214 ->
+      {ok, Lines, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
+    {error, Reason} ->
+      exit(Reason)
+  end.
+
+-spec help_2(binary(), state()) ->
+        {ok, iodata(), state()} | {error, term(), state()}.
+help_2(HelpArgument, State) ->
+  Timeout = get_read_timeout_option(State, <<"HELP">>, 60_000),
+  Cmd = smtp_proto:encode_help_cmd(HelpArgument),
+  case exec(State, Cmd, Timeout) of
+    {ok, {Code, Lines}, State2} when Code =:= 211; Code =:= 214 ->
+      {ok, Lines, State2};
+    {ok, Reply, State2} ->
+      {error, {protocol_error, Cmd, Reply}, State2};
+    {error, Reason} ->
+      exit(Reason)
   end.
 
 -spec exec(state(), smtp_proto:command(), timeout()) ->
