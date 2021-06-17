@@ -19,6 +19,8 @@
 -export([default_port/0, default_tls_port/0, default_port/1,
          fqdn/0]).
 
+-export([sendmail/3]).
+
 -export_type([protocol/0]).
 
 -type protocol() :: smtp | submission | smtps.
@@ -49,4 +51,53 @@ fqdn() ->
       iolist_to_binary(FQDN);
     {error, _} ->
       <<"localhost">>
+  end.
+
+-spec sendmail(binary(), imf:message(), map()) ->
+        ok | {error, term()}.
+sendmail(Sender, Mail, Options) ->
+  Data = imf:encode(Mail),
+  Recipients = imf:recipient_addresses(Mail),
+    case smtp_client:start_link(Options) of
+      {ok, Ref} ->
+        try
+          ok = mail_from(Ref, Sender),
+          ok = recp_to(Ref, Recipients),
+          ok = data(Ref, Data)
+        catch
+          throw:{error, Reason} ->
+            smtp_client:quit(Ref),
+            {error, Reason};
+          exit:{noproc, _Trace} ->
+            {error, connection_failure};
+          exit:{ExitReason, _Trace} ->
+            {error, ExitReason}
+        end,
+        smtp_client:quit(Ref);
+      {error, Reason} ->
+        {error, Reason}
+    end.
+
+mail_from(Ref, Sender) ->
+  case smtp_client:mail_from(Ref, Sender) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      throw({error, Reason})
+  end.
+
+recp_to(Ref, Recipients) ->
+  case smtp_client:recp_to(Ref, Recipients) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      throw({error, Reason})
+  end.
+
+data(Ref, Data) ->
+  case smtp_client:data(Ref, Data) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      throw({error, Reason})
   end.

@@ -83,9 +83,12 @@ noop(Ref) ->
 mail_from(Ref, EmailAddress) ->
   gen_server:call(Ref, {mail_from, EmailAddress}, infinity).
 
--spec recp_to(et_gen_server:ref(), binary()) -> ok | {error, term()}.
-recp_to(Ref, EmailAddress) ->
-  gen_server:call(Ref, {recp_to, EmailAddress}, infinity).
+-spec recp_to(et_gen_server:ref(), binary() | [binary()]) ->
+        ok | {error, term()}.
+recp_to(Ref, EmailAddress) when is_binary(EmailAddress) ->
+  recp_to(Ref, [EmailAddress]);
+recp_to(Ref, EmailAddresses) ->
+  gen_server:call(Ref, {recp_to, EmailAddresses}, infinity).
 
 -spec data(et_gen_server:ref(), iodata()) -> ok | {error, term()}.
 data(Ref, Data) ->
@@ -494,14 +497,16 @@ mail_from_2(EmailAddress, State) ->
       exit(Reason)
   end.
 
--spec recp_to_2(binary(), state()) ->
+-spec recp_to_2([binary()], state()) ->
         {ok, state()} | {error, term(), state()}.
-recp_to_2(EmailAddress, State) ->
+recp_to_2([], State) ->
+  {ok, State};
+recp_to_2([EmailAddress | T], State) ->
   Timeout = get_read_timeout_option(State, <<"RCPT TO">>, 300_000),
   Cmd = smtp_proto:encode_rcpt_to_cmd(EmailAddress),
   case exec(State, Cmd, Timeout) of
     {ok, {Code, _}, State2} when Code =:= 250; Code =:= 251 ->
-      {ok, State2};
+      recp_to_2(T, State2);
     {ok, Reply, State2} ->
       {error, {protocol_error, Cmd, Reply}, State2};
     {error, Reason} ->
