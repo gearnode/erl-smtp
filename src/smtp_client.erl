@@ -141,7 +141,7 @@ handle_continue(Msg, State) ->
         et_gen_server:handle_call_ret(state()).
 handle_call(quit, _, State) ->
   quit_2(State),
-  {stop, normal, ok, State};
+  {reply, ok, State};
 
 handle_call(noop, _, State) ->
   case noop_2(State) of
