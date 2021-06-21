@@ -19,7 +19,7 @@
 -export([default_port/0, default_tls_port/0, default_port/1,
          fqdn/0]).
 
--export([sendmail/3]).
+-export([sendmail/2, sendmail/3]).
 
 -export_type([protocol/0, pool_id/0, transport/0]).
 
@@ -28,6 +28,8 @@
 -type pool_id() :: atom().
 
 -type transport() :: tcp | tls.
+
+-type sendmail_options() :: #{pool => pool_id()}.
 
 -spec default_port() -> inet:port_number().
 default_port() ->
@@ -57,7 +59,12 @@ fqdn() ->
       <<"localhost">>
   end.
 
--spec sendmail(binary(), imf:message(), map()) -> ok | {error, term()}.
+-spec sendmail(binary(), imf:message()) -> ok | {error, term()}.
+sendmail(Sender, Mail) ->
+  sendmail(Sender, Mail, #{}).
+
+-spec sendmail(binary(), imf:message(), sendmail_options()) ->
+        ok | {error, term()}.
 sendmail(Sender, Mail, Options) ->
   PoolId = maps:get(pool, Options, default),
   PoolRef = smtp_pool:process_name(PoolId),
