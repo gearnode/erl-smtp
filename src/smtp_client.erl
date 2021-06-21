@@ -18,7 +18,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/1, init/1, terminate/2,
+-export([start_link/1, init/1, terminate/2, stop/1,
          handle_call/3, handle_cast/2, handle_info/2, handle_continue/2]).
 
 -export([quit/1,
@@ -28,9 +28,11 @@
          help/1, help/2,
          vrfy/2]).
 
--export_type([options/0, tcp_option/0, tls_option/0, transport/0,
+-export_type([ref/0, options/0, tcp_option/0, tls_option/0,
               command_timeout/0, starttls_policy/0,
               authentication/0, mechanism_name/0, mechanism_parameters/0]).
+
+-type ref() :: et_gen_server:ref().
 
 -type options() :: #{host => uri:host(),
                      port => uri:port_number(),
@@ -70,6 +72,10 @@
     Result :: {ok, pid()} | ignore | {error, term()}.
 start_link(Options) ->
   gen_server:start_link(?MODULE, [Options], []).
+
+-spec stop(ref()) -> ok.
+stop(Ref) ->
+  gen_server:stop(Ref, normal, infinity).
 
 -spec quit(et_gen_server:ref()) -> ok.
 quit(Ref) ->
