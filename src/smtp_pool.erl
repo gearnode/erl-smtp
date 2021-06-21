@@ -31,9 +31,7 @@
 -type state() :: #{id := smtp:pool_id(),
                    options := options()}.
 
--type options() :: #{client_options => smtp_client:options(),
-                     request_timeout => pos_integer()}.
-
+-type options() :: #{client_options => smtp_client:options()}.
 
 -spec process_name(smtp:pool_id()) -> atom().
 process_name(Id) ->
@@ -60,7 +58,7 @@ sendmail(Ref, Sender, Mail) ->
 init([Id, Options]) ->
   logger:update_process_metadata(#{domain => [smtp, pool, Id]}),
   process_flag(trap_exit, true),
-  State = #{id => Id, options => Options},
+  State = #{id => Id, options => #{client_options => Options}},
   {ok, State}.
 
 -spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
