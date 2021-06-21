@@ -36,7 +36,7 @@
 
 -type options() :: #{host => uri:host(),
                      port => uri:port_number(),
-                     transport => transport(),
+                     transport => smtp:transport(),
                      starttls => starttls_policy(),
                      tcp_options => [tcp_option()],
                      tls_options => [tls_option()],
@@ -52,12 +52,10 @@
                      | smtp_proto:helo_reply().
 
 -type state() :: #{options := options(),
-                   transport := transport(),
+                   transport := smtp:transport(),
                    parser := smtp_parser:parser(),
                    socket := inet:socket() | ssl:sslsocket(),
                    server_info => server_info()}.
-
--type transport() :: tcp | tls.
 
 -type starttls_policy() :: disabled | required | best_effort.
 

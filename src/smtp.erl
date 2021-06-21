@@ -21,9 +21,13 @@
 
 -export([sendmail/3]).
 
--export_type([protocol/0]).
+-export_type([protocol/0, pool_id/0, transport/0]).
 
 -type protocol() :: smtp | submission | smtps.
+
+-type pool_id() :: atom().
+
+-type transport() :: tcp | tls.
 
 -spec default_port() -> inet:port_number().
 default_port() ->
