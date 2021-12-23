@@ -26,7 +26,7 @@
 
 -export_type([ref/0, options/0]).
 
--type ref() :: et_gen_server:ref().
+-type ref() :: c_gen_server:ref().
 
 -type state() :: #{id := smtp:pool_id(),
                    options := options()}.
@@ -38,7 +38,7 @@ process_name(Id) ->
   Name = <<"smtp_pool_", (atom_to_binary(Id))/binary>>,
   binary_to_atom(Name).
 
--spec start_link(smtp:pool_id(), options()) -> et_gen_server:start_ret().
+-spec start_link(smtp:pool_id(), options()) -> c_gen_server:start_ret().
 start_link(Id, Options) ->
   Name = process_name(Id),
   gen_server:start_link({local, Name}, ?MODULE, [Id, Options], []).
@@ -54,15 +54,15 @@ sendmail(Ref, Sender, Mail) ->
   Recipients = imf:recipient_addresses(Mail),
   gen_server:call(Ref, {sendmail, Sender, Recipients, Data}, infinity).
 
--spec init(list()) -> et_gen_server:init_ret(state()).
+-spec init(list()) -> c_gen_server:init_ret(state()).
 init([Id, Options]) ->
   logger:update_process_metadata(#{domain => [smtp, pool, Id]}),
   process_flag(trap_exit, true),
   State = #{id => Id, options => #{client_options => Options}},
   {ok, State}.
 
--spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
-        et_gen_server:handle_call_ret(state()).
+-spec handle_call(term(), {pid(), c_gen_server:request_id()}, state()) ->
+        c_gen_server:handle_call_ret(state()).
 handle_call({sendmail, Sender, Recipients, Data}, _,
             #{options := Options} = State) ->
   ClientOptions = maps:get(client_options, Options, #{}),
@@ -107,12 +107,12 @@ handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
 
--spec handle_cast(term(), state()) -> et_gen_server:handle_cast_ret(state()).
+-spec handle_cast(term(), state()) -> c_gen_server:handle_cast_ret(state()).
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
 
--spec handle_info(term(), state()) -> et_gen_server:handle_info_ret(state()).
+-spec handle_info(term(), state()) -> c_gen_server:handle_info_ret(state()).
 handle_info({'EXIT', _, _}, State) ->
   {noreply, State};
 

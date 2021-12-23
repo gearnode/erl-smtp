@@ -32,7 +32,7 @@
               command_timeout/0, starttls_policy/0,
               authentication/0, mechanism_name/0, mechanism_parameters/0]).
 
--type ref() :: et_gen_server:ref().
+-type ref() :: c_gen_server:ref().
 
 -type options() :: #{host => uri:host(),
                      port => uri:port_number(),
@@ -75,52 +75,52 @@ start_link(Options) ->
 stop(Ref) ->
   gen_server:stop(Ref, normal, infinity).
 
--spec quit(et_gen_server:ref()) -> ok.
+-spec quit(c_gen_server:ref()) -> ok.
 quit(Ref) ->
   gen_server:call(Ref, quit, infinity).
 
--spec noop(et_gen_server:ref()) -> ok | {error, term()}.
+-spec noop(c_gen_server:ref()) -> ok | {error, term()}.
 noop(Ref) ->
   gen_server:call(Ref, noop, infinity).
 
--spec mail_from(et_gen_server:ref(), binary()) -> ok | {error, term()}.
+-spec mail_from(c_gen_server:ref(), binary()) -> ok | {error, term()}.
 mail_from(Ref, EmailAddress) ->
   gen_server:call(Ref, {mail_from, EmailAddress}, infinity).
 
--spec recp_to(et_gen_server:ref(), binary() | [binary()]) ->
+-spec recp_to(c_gen_server:ref(), binary() | [binary()]) ->
         ok | {error, term()}.
 recp_to(Ref, EmailAddress) when is_binary(EmailAddress) ->
   recp_to(Ref, [EmailAddress]);
 recp_to(Ref, EmailAddresses) ->
   gen_server:call(Ref, {recp_to, EmailAddresses}, infinity).
 
--spec data(et_gen_server:ref(), iodata()) -> ok | {error, term()}.
+-spec data(c_gen_server:ref(), iodata()) -> ok | {error, term()}.
 data(Ref, Data) ->
   gen_server:call(Ref, {data, Data}, infinity).
 
--spec rset(et_gen_server:ref()) -> ok | {error, term()}.
+-spec rset(c_gen_server:ref()) -> ok | {error, term()}.
 rset(Ref) ->
   gen_server:call(Ref, rset, infinity).
 
--spec help(et_gen_server:ref()) -> {ok, iodata()} | {error, term()}.
+-spec help(c_gen_server:ref()) -> {ok, iodata()} | {error, term()}.
 help(Ref) ->
   gen_server:call(Ref, help, infinity).
 
--spec help(et_gen_server:ref(), binary()) -> {ok, iodata()} | {error, term()}.
+-spec help(c_gen_server:ref(), binary()) -> {ok, iodata()} | {error, term()}.
 help(Ref, HelpArgument) ->
   gen_server:call(Ref, {help, HelpArgument}, infinity).
 
--spec vrfy(et_gen_server:ref(), binary()) ->
+-spec vrfy(c_gen_server:ref(), binary()) ->
         {ok, iodata() | atom()} | {error, term()}.
 vrfy(Ref, User) ->
   gen_server:call(Ref, {vrfy, User}, infinity).
 
--spec init(list()) -> et_gen_server:init_ret(state()).
+-spec init(list()) -> c_gen_server:init_ret(state()).
 init([Options]) ->
   logger:update_process_metadata(#{domain => [smtp, client]}),
   connect(Options).
 
--spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
+-spec terminate(c_gen_server:terminate_reason(), state()) -> ok.
 terminate(_Reason, #{transport := tcp, socket := Socket}) ->
   gen_tcp:close(Socket),
   ok;
@@ -129,7 +129,7 @@ terminate(_Reason, #{transport := tls, socket := Socket}) ->
   ok.
 
 -spec handle_continue(term(), state()) ->
-        et_gen_server:handle_continue_ret(state()).
+        c_gen_server:handle_continue_ret(state()).
 handle_continue(ehlo, State) ->
   greeting_message(State);
 
@@ -137,8 +137,8 @@ handle_continue(Msg, State) ->
   ?LOG_WARNING("unhandled call ~p", [Msg]),
   {noreply, State}.
 
--spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
-        et_gen_server:handle_call_ret(state()).
+-spec handle_call(term(), {pid(), c_gen_server:request_id()}, state()) ->
+        c_gen_server:handle_call_ret(state()).
 handle_call(quit, _, State) ->
   quit_2(State),
   {reply, ok, State};
@@ -211,7 +211,7 @@ handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
 
--spec handle_cast(term(), state()) -> et_gen_server:handle_cast_ret(state()).
+-spec handle_cast(term(), state()) -> c_gen_server:handle_cast_ret(state()).
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
@@ -220,7 +220,7 @@ handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
 
--spec connect(options()) -> et_gen_server:init_ret(state()).
+-spec connect(options()) -> c_gen_server:init_ret(state()).
 connect(Options) ->
   Transport = maps:get(transport, Options, tcp),
   Host = maps:get(host, Options, <<"localhost">>),
@@ -278,7 +278,7 @@ host_address(Host) ->
       HostString
   end.
 
--spec greeting_message(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec greeting_message(state()) -> c_gen_server:handle_continue_ret(state()).
 greeting_message(State) ->
   Timeout = get_read_timeout_option(State, <<"INITIAL">>, 60_000),
   case recv(State, Timeout) of
@@ -290,7 +290,7 @@ greeting_message(State) ->
       exit(Reason)
   end.
 
--spec ehlo(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec ehlo(state()) -> c_gen_server:handle_continue_ret(state()).
 ehlo(State) ->
   Cmd = smtp_proto:encode_ehlo_cmd(smtp:fqdn()),
   Timeout = get_read_timeout_option(State, <<"EHLO">>, 60_000),
@@ -304,7 +304,7 @@ ehlo(State) ->
       exit(Reason)
   end.
 
--spec helo(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec helo(state()) -> c_gen_server:handle_continue_ret(state()).
 helo(State) ->
   Cmd = smtp_proto:encode_helo_cmd(smtp:fqdn()),
   Timeout = get_read_timeout_option(State, <<"HELO">>, 60_000),
@@ -319,7 +319,7 @@ helo(State) ->
       exit(Reason)
   end.
 
--spec maybe_starttls(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec maybe_starttls(state()) -> c_gen_server:handle_continue_ret(state()).
 maybe_starttls(#{transport := tls} = State) ->
   maybe_auth(State);
 maybe_starttls(State) ->
@@ -332,7 +332,7 @@ maybe_starttls(State) ->
       starttls(State)
   end.
 
--spec starttls(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec starttls(state()) -> c_gen_server:handle_continue_ret(state()).
 starttls(State) ->
   Cmd = smtp_proto:encode_starttls_cmd(),
   Timeout = get_read_timeout_option(State, <<"STARTTLS">>, 60_000),
@@ -351,7 +351,7 @@ starttls(State) ->
       exit(Reason)
   end.
 
--spec ssl_handshake(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec ssl_handshake(state()) -> c_gen_server:handle_continue_ret(state()).
 ssl_handshake(#{options := Options, socket := Socket} = State) ->
   TLSOptions = maps:get(tls_options, Options, []),
   case ssl:connect(Socket, TLSOptions) of
@@ -362,7 +362,7 @@ ssl_handshake(#{options := Options, socket := Socket} = State) ->
       {stop, {connection_error, Reason}, State}
   end.
 
--spec maybe_auth(state()) -> et_gen_server:handle_continue_ret(state()).
+-spec maybe_auth(state()) -> c_gen_server:handle_continue_ret(state()).
 maybe_auth(State) ->
   case get_authentication_option(State) of
     {Mechanism, MechanismOptions} when
@@ -379,7 +379,7 @@ maybe_auth(State) ->
   end.
 
 -spec auth(mechanism_name(), mechanism_parameters(), state()) ->
-        et_gen_server:handle_continue_ret(state()).
+        c_gen_server:handle_continue_ret(state()).
 auth(Mechanism, MechanismOptions, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Cmd = smtp_proto:encode_auth_cmd(Mechanism),
@@ -400,7 +400,7 @@ auth(Mechanism, MechanismOptions, State) ->
   end.
 
 -spec auth(mechanism_name(), mechanism_parameters(), binary(), state()) ->
-        et_gen_server:handle_continue_ret(state()).
+        c_gen_server:handle_continue_ret(state()).
 auth(<<"PLAIN">>, #{username := Username, password := Password}, _, State) ->
   Timeout = get_read_timeout_option(State, <<"AUTH">>, 60_000),
   Msg = smtp_sasl:encode_plain(Username, Password),

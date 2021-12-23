@@ -26,7 +26,7 @@
     public_key,
     ssl,
     uri,
-    et,
+    core,
     b64,
     imf
    ]},
