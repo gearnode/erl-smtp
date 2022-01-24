@@ -19,7 +19,8 @@
 -export([default_port/0, default_tls_port/0, default_port/1,
          fqdn/0]).
 
--export([sendmail/2, sendmail/3]).
+-export([sendmail/2, sendmail/3,
+         sendmail_raw/3, sendmail_raw/4]).
 
 -export_type([protocol/0, pool_id/0, transport/0]).
 
@@ -66,6 +67,18 @@ sendmail(Sender, Mail) ->
 -spec sendmail(binary(), imf:message(), sendmail_options()) ->
         ok | {error, term()}.
 sendmail(Sender, Mail, Options) ->
+  Recipients = imf:recipient_addresses(Mail),
+  Data = imf:encode(Mail),
+  sendmail_raw(Sender, Recipients, Data, Options).
+
+-spec sendmail_raw(binary(), [binary()], iodata()) ->
+        ok | {error, term()}.
+sendmail_raw(Sender, Recipients, Data) ->
+  sendmail_raw(Sender, Recipients, Data, #{}).
+
+-spec sendmail_raw(binary(), [binary()], iodata(), sendmail_options()) ->
+        ok | {error, term()}.
+sendmail_raw(Sender, Recipients, Data, Options) ->
   PoolId = maps:get(pool, Options, default),
   PoolRef = smtp_pool:process_name(PoolId),
-  smtp_pool:sendmail(PoolRef, Sender, Mail).
+  smtp_pool:sendmail(PoolRef, Sender, Recipients, Data).

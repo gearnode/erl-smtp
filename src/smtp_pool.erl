@@ -22,7 +22,7 @@
 
 -export([process_name/1, start_link/2, stop/1]).
 
--export([sendmail/3]).
+-export([sendmail/4]).
 
 -export_type([ref/0, options/0]).
 
@@ -48,10 +48,8 @@ stop(Id) ->
   Name = process_name(Id),
   gen_server:stop(Name).
 
--spec sendmail(ref(), binary(), imf:message()) -> ok | {error, term()}.
-sendmail(Ref, Sender, Mail) ->
-  Data = imf:encode(Mail),
-  Recipients = imf:recipient_addresses(Mail),
+-spec sendmail(ref(), binary(), [binary()], iodata()) -> ok | {error, term()}.
+sendmail(Ref, Sender, Recipients, Data) ->
   gen_server:call(Ref, {sendmail, Sender, Recipients, Data}, infinity).
 
 -spec init(list()) -> c_gen_server:init_ret(state()).
