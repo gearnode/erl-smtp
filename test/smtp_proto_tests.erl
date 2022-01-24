@@ -1,4 +1,4 @@
-%% Copyright (c) 2021 Exograd SAS.
+%% Copyright (c) 2021-2022 Exograd SAS.
 %%
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -57,7 +57,7 @@ encode_quit_cmd_test_() ->
 decode_ehlo_reply_test() ->
   Reply =
     [<<"d01c7054a707 Hello basile.localdomain [172.26.0.1], pleased to meet you">>,
-     <<"8BITMIME">>,<<"ENHANCEDSTATUSCODES">>,<<"SIZE 36700160">>,<<"DSN">>, 
+     <<"8BITMIME">>,<<"ENHANCEDSTATUSCODES">>,<<"SIZE 36700160">>,<<"DSN">>,
      <<"HELP">>, <<"UNKOWNEXT">>],
   ?assertEqual(#{domain => <<"d01c7054a707">>,
                  extensions =>
